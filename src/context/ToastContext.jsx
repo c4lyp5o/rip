@@ -1,9 +1,7 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from "lucide-react";
 
-const ToastContext = createContext();
-
-export const useToast = () => useContext(ToastContext);
+const ToastContext = createContext(null);
 
 const icons = {
 	success: <CheckCircle size={14} className="text-green-500 shrink-0" />,
@@ -37,7 +35,7 @@ export const ToastProvider = ({ children, placement = "top-right" }) => {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: false
 	const showToast = useCallback((message, type = "info", duration = 2500) => {
-		const id = Date.now();
+		const id = crypto.randomUUID();
 		setToasts((prev) => [...prev, { id, message, type, exiting: false }]);
 		setTimeout(() => removeToast(id), duration);
 	}, []);
@@ -82,4 +80,12 @@ export const ToastProvider = ({ children, placement = "top-right" }) => {
 			</div>
 		</ToastContext.Provider>
 	);
+};
+
+export const useToast = () => {
+	const context = useContext(ToastContext);
+	if (!context) {
+		throw new Error("useToast must be used within ToastProvider");
+	}
+	return context;
 };
