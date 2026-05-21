@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect, useCallback, memo } from "react";
 import { useRip } from "./context/RIPContext";
 import { useToast } from "./context/ToastContext";
-import { parseUrlInput } from "./utils/urlParser";
 import { generateSnippet } from "./utils/snippetGenerator";
 import {
 	deleteHistoryItem,
 	clearHistory,
-	getCollectionsTree,
+	// getCollectionsTree, // later
 	createCollection,
 	deleteCollection,
 	saveRequest,
@@ -72,6 +71,131 @@ const SidebarItem = memo(({ icon: Icon, label, active, onClick }) => (
 		<span className="truncate">{label}</span>
 	</button>
 ));
+
+const HistoryItem = memo(({ item, onLoadRequest, onDeleteRequest }) => (
+	<div
+		key={item.id}
+		className="group relative flex items-center w-full gap-2 px-2 py-1 text-[11px] text-left rounded hover:bg-stone-800 transition-colors border border-transparent hover:border-stone-700"
+		title={item.url}
+	>
+		<button
+			type="button"
+			onClick={() => onLoadRequest(item.id)}
+			className="flex items-center min-w-0 flex-1 gap-2 text-left"
+		>
+			<span
+				className={`
+          shrink-0 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border
+          ${getMethodClass(item.method)}
+        `}
+			>
+				{item.method}
+			</span>
+
+			<span className="flex-1 truncate text-stone-400 font-mono group-hover:text-stone-200 transition-colors">
+				{item.url}
+			</span>
+		</button>
+
+		<button
+			type="button"
+			onClick={() => onDeleteRequest(item)}
+			className="hidden group-hover:block p-1 text-stone-500 hover:text-red-400 rounded transition-all shrink-0"
+			title="Delete from history"
+		>
+			<Trash2 className="w-3 h-3" />
+		</button>
+	</div>
+));
+
+const TreeItem = memo(
+	({ item, onLoadRequest, onDeleteCollection, onDeleteRequest }) => {
+		const [isOpen, setIsOpen] = useState(false);
+
+		if (item.type === "request") {
+			return (
+				<div className="group flex items-center justify-between px-4 py-1.5 text-xs text-stone-400 hover:bg-stone-800 ml-4 border-l border-stone-800 cursor-pointer">
+					<button
+						type="button"
+						onClick={() => onLoadRequest(item)}
+						className="flex items-center gap-2 flex-1 min-w-0 hover:text-emerald-400"
+					>
+						<span
+							className={`font-mono text-[10px] shrink-0 ${getMethodColor(item.method)}`}
+						>
+							{item.method}
+						</span>
+						<span className="truncate">{item.name}</span>
+					</button>
+					<button
+						type="button"
+						onClick={(e) => onDeleteRequest(item)}
+						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
+						title="Delete Request"
+					>
+						<Trash2 className="w-3 h-3" />
+					</button>
+				</div>
+			);
+		}
+
+		return (
+			<div className="flex flex-col">
+				<div className="group flex items-center justify-between px-2 py-2 text-sm text-stone-300 hover:bg-stone-800 cursor-pointer select-none">
+					<button
+						type="button"
+						onClick={() => setIsOpen(!isOpen)}
+						className="flex items-center gap-2 flex-1 min-w-0"
+					>
+						{isOpen ? (
+							<ChevronDown className="w-3 h-3 shrink-0" />
+						) : (
+							<ChevronRight className="w-3 h-3 shrink-0" />
+						)}
+
+						{item.type === "collection" ? (
+							<Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+						) : (
+							<Folder className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+						)}
+
+						<span className="font-medium truncate">{item.name}</span>
+					</button>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onDeleteCollection(item);
+						}}
+						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
+						title="Delete Collection"
+					>
+						<Trash2 className="w-3 h-3" />
+					</button>
+				</div>
+
+				{isOpen && (
+					<div className="pl-2 border-l border-stone-800 ml-3">
+						{item.items?.map((child) => (
+							<TreeItem
+								key={child.id}
+								item={child}
+								onLoadRequest={onLoadRequest}
+								onDeleteCollection={onDeleteCollection}
+								onDeleteRequest={onDeleteRequest}
+							/>
+						))}
+						{(!item.items || item.items.length === 0) && (
+							<div className="pl-4 py-1 text-[10px] text-stone-600 italic">
+								Empty
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+		);
+	},
+);
 
 const TabItem = ({ id, method, name, active, onClose, onRename }) => {
 	const [isEditing, setIsEditing] = useState(false);
@@ -277,114 +401,14 @@ const BlobPreview = ({ blob, contentType, filename }) => {
 	);
 };
 
-const TreeItem = memo(
-	({ item, onLoadRequest, onDeleteCollection, onDeleteRequest }) => {
-		const [isOpen, setIsOpen] = useState(false);
-
-		if (item.type === "request") {
-			return (
-				<div className="group flex items-center justify-between px-4 py-1.5 text-xs text-stone-400 hover:bg-stone-800 ml-4 border-l border-stone-800 cursor-pointer">
-					{/* biome-ignore lint/a11y/useKeyWithClickEvents: nanti */}
-					{/* biome-ignore lint/a11y/noStaticElementInteractions: nanti */}
-					<div
-						onClick={() => onLoadRequest(item)}
-						className="flex items-center gap-2 flex-1 min-w-0 hover:text-emerald-400"
-					>
-						<span
-							className={`font-mono text-[10px] shrink-0 ${getMethodColor(item.method)}`}
-						>
-							{item.method}
-						</span>
-						<span className="truncate">{item.name}</span>
-					</div>
-					<button
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							onDeleteRequest(item);
-						}}
-						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
-						title="Delete Request"
-					>
-						<Trash2 className="w-3 h-3" />
-					</button>
-				</div>
-			);
-		}
-
-		return (
-			<div className="flex flex-col">
-				<div className="group flex items-center justify-between px-2 py-2 text-sm text-stone-300 hover:bg-stone-800 cursor-pointer select-none">
-					{/* biome-ignore lint/a11y/useKeyWithClickEvents: nanti */}
-					{/* biome-ignore lint/a11y/noStaticElementInteractions: nanti */}
-					<div
-						onClick={() => setIsOpen(!isOpen)}
-						className="flex items-center gap-2 flex-1 min-w-0"
-					>
-						{isOpen ? (
-							<ChevronDown className="w-3 h-3 shrink-0" />
-						) : (
-							<ChevronRight className="w-3 h-3 shrink-0" />
-						)}
-
-						{item.type === "collection" ? (
-							<Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-						) : (
-							<Folder className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-						)}
-
-						<span className="font-medium truncate">{item.name}</span>
-					</div>
-					<button
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							onDeleteCollection(item);
-						}}
-						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
-						title="Delete Collection"
-					>
-						<Trash2 className="w-3 h-3" />
-					</button>
-				</div>
-
-				{isOpen && (
-					<div className="pl-2 border-l border-stone-800 ml-3">
-						{item.items?.map((child) => (
-							<TreeItem
-								key={child.id}
-								item={child}
-								onLoadRequest={onLoadRequest}
-								onDeleteCollection={onDeleteCollection}
-								onDeleteRequest={onDeleteRequest}
-							/>
-						))}
-						{(!item.items || item.items.length === 0) && (
-							<div className="pl-4 py-1 text-[10px] text-stone-600 italic">
-								Empty
-							</div>
-						)}
-					</div>
-				)}
-			</div>
-		);
-	},
-);
-
 // --- Main App Component ---
 
 function App() {
 	const { state, dispatch, fetcherRef, refreshHistory, refreshCollections } =
 		useRip();
 	const { showToast } = useToast();
-	const {
-		methods,
-		isFetching,
-		workspaceTabs,
-		activeWorkspaceTabId,
-		history,
-		collections,
-	} = state;
+	const { methods, workspaceTabs, activeWorkspaceTabId, history, collections } =
+		state;
 
 	// UI Local State
 	const [activeSpace, setActiveSpace] = useState("history");
@@ -416,6 +440,8 @@ function App() {
 		(tab) => tab.id === activeWorkspaceTabId,
 	);
 
+	const isFetching = activeWorkspace?.isFetching ?? false;
+
 	const visibleTabs = useMemo(() => {
 		if (!activeWorkspace) return [];
 
@@ -428,10 +454,6 @@ function App() {
 	}, [activeWorkspace]);
 
 	// --- Handlers ---
-
-	const handleSetActiveSpace = (space) => {
-		setActiveSpace(space);
-	};
 
 	const handleRenameTab = async (tabId, newName) => {
 		dispatch({ type: "SET_TAB_NAME", payload: { id: tabId, name: newName } });
@@ -460,16 +482,10 @@ function App() {
 	};
 
 	const handleFetch = async () => {
-		if (!activeWorkspace) return;
-		try {
-			dispatch({ type: "SET_ACTIVE_SUB_TAB", payload: "response" });
-			setResponseView("body");
-			fetcherRef.current(activeWorkspace).catch((err) => {
-				if (import.meta.env.DEV) console.error(err);
-			});
-		} catch (error) {
-			if (import.meta.env.DEV) console.error(error);
-		}
+		if (!activeWorkspace || activeWorkspace.isFetching) return;
+		dispatch({ type: "SET_ACTIVE_SUB_TAB", payload: "response" });
+		setResponseView("body");
+		fetcherRef.current(activeWorkspace, state.networkDelay);
 	};
 
 	const handleFormatBody = () => {
@@ -557,9 +573,16 @@ function App() {
 			title: "Delete History Item",
 			message: `Remove this ${item.method} request to ${item.url} from history?`,
 			onConfirm: async () => {
-				await deleteHistoryItem(item.id);
-				dispatch({ type: "DELETE_HISTORY_ITEM", payload: item.id });
-				setConfirmModal({ isOpen: false });
+				try {
+					await deleteHistoryItem(item.id);
+					dispatch({ type: "DELETE_HISTORY_ITEM", payload: item.id });
+					setConfirmModal({ isOpen: false });
+					showToast("History item deleted", "success");
+				} catch (error) {
+					if (import.meta.env.DEV)
+						console.error("Failed to delete history item:", error);
+					showToast("Failed to delete history item", "error");
+				}
 			},
 		});
 	};
@@ -571,9 +594,16 @@ function App() {
 			message:
 				"Are you sure you want to delete all request history? This action cannot be undone.",
 			onConfirm: async () => {
-				await clearHistory();
-				dispatch({ type: "CLEAR_HISTORY" });
-				setConfirmModal({ isOpen: false });
+				try {
+					await clearHistory();
+					dispatch({ type: "CLEAR_HISTORY" });
+					setConfirmModal({ isOpen: false });
+					showToast("History cleared", "success");
+				} catch (error) {
+					if (import.meta.env.DEV)
+						console.error("Failed to clear history:", error);
+					showToast("Failed to clear history", "error");
+				}
 			},
 		});
 	};
@@ -581,39 +611,72 @@ function App() {
 	const handleCreateCollection = async (e) => {
 		if (e) e.preventDefault();
 		if (!newCollectionName.trim()) return;
-		await createCollection(newCollectionName.trim());
-		setNewCollectionName("");
-		setIsCreateModalOpen(false);
-		await refreshCollections();
+
+		try {
+			await createCollection(newCollectionName.trim());
+			setNewCollectionName("");
+			setIsCreateModalOpen(false);
+			await refreshCollections();
+			showToast("Collection created", "success");
+		} catch (error) {
+			if (import.meta.env.DEV)
+				console.error("Failed to create collection:", error);
+			showToast("Failed to create collection", "error");
+		}
 	};
 
 	const handleSaveToCollection = async (collectionId) => {
 		if (!activeWorkspace) return;
-		const newId = await saveRequest(collectionId, null, {
-			name: activeWorkspace.name || activeWorkspace.url || "Untitled",
-			method: activeWorkspace.method,
-			url: activeWorkspace.url,
-			headers: activeWorkspace.headers,
-			queries: activeWorkspace.queries,
-			body: activeWorkspace.body,
-		});
-		dispatch({ type: "SET_SAVED_REQUEST_ID", payload: newId });
-		await refreshCollections();
-		showToast("Saved to collection", "success");
+
+		const tab = activeWorkspace;
+
+		try {
+			const newId = await saveRequest(collectionId, null, {
+				name: tab.name || tab.url || "Untitled",
+				method: tab.method,
+				url: tab.url,
+				headers: tab.headers,
+				queries: tab.queries,
+				body: tab.body,
+				auth: tab.auth,
+			});
+
+			dispatch({
+				type: "SET_SAVED_REQUEST_ID",
+				payload: { tabId: tab.id, savedRequestId: newId },
+			});
+
+			await refreshCollections();
+			showToast("Saved to collection", "success");
+		} catch (error) {
+			if (import.meta.env.DEV)
+				console.error("Failed to save request to collection:", error);
+			showToast("Failed to save request", "error");
+		}
 	};
 
 	const handleUpdateRequest = async () => {
 		if (!activeWorkspace || !activeWorkspace.savedRequestId) return;
-		await updateRequest(activeWorkspace.savedRequestId, {
-			name: activeWorkspace.name,
-			method: activeWorkspace.method,
-			url: activeWorkspace.url,
-			headers: activeWorkspace.headers,
-			queries: activeWorkspace.queries,
-			body: activeWorkspace.body,
-			auth: activeWorkspace.auth,
-		});
-		await refreshCollections();
+
+		const tab = activeWorkspace;
+
+		try {
+			await updateRequest(tab.savedRequestId, {
+				name: tab.name || tab.url || "Untitled",
+				method: tab.method,
+				url: tab.url,
+				headers: tab.headers,
+				queries: tab.queries,
+				body: tab.body,
+				auth: tab.auth,
+			});
+			await refreshCollections();
+			showToast("Saved changes", "success");
+		} catch (error) {
+			if (import.meta.env.DEV)
+				console.error("Failed to update saved request:", error);
+			showToast("Failed to update request", "error");
+		}
 	};
 
 	const confirmDeleteCollection = (col) => {
@@ -622,9 +685,16 @@ function App() {
 			title: "Delete Collection",
 			message: `Are you sure you want to delete "${col.name}"? All requests inside will be lost.`,
 			onConfirm: async () => {
-				await deleteCollection(col.id);
-				await refreshCollections();
-				setConfirmModal({ isOpen: false });
+				try {
+					await deleteCollection(col.id);
+					await refreshCollections();
+					setConfirmModal({ isOpen: false });
+					showToast("Collection deleted", "success");
+				} catch (error) {
+					if (import.meta.env.DEV)
+						console.error("Failed to delete collection:", error);
+					showToast("Failed to delete collection", "error");
+				}
 			},
 		});
 	};
@@ -635,25 +705,37 @@ function App() {
 			title: "Delete Request",
 			message: `Are you sure you want to delete "${req.name}"?`,
 			onConfirm: async () => {
-				await deleteRequest(req.id);
-				await refreshCollections();
-				setConfirmModal({ isOpen: false });
+				try {
+					await deleteRequest(req.id);
+					await refreshCollections();
+					setConfirmModal({ isOpen: false });
+					showToast("Request deleted", "success");
+				} catch (error) {
+					if (import.meta.env.DEV)
+						console.error("Failed to delete request:", error);
+					showToast("Failed to delete request", "error");
+				}
 			},
 		});
 	};
 
 	const handleExportData = async () => {
-		const data = await exportData();
-		const blob = new Blob([JSON.stringify(data, null, 2)], {
-			type: "application/json",
-		});
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `rip-backup-${new Date().toISOString().slice(0, 10)}.json`;
-		a.click();
-		URL.revokeObjectURL(url);
-		showToast(`Backup file downloaded as ${a.download}!`, "success");
+		try {
+			const data = await exportData();
+			const blob = new Blob([JSON.stringify(data, null, 2)], {
+				type: "application/json",
+			});
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `rip-backup-${new Date().toISOString().slice(0, 10)}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+			showToast(`Backup file downloaded as ${a.download}!`, "success");
+		} catch (error) {
+			if (import.meta.env.DEV) console.error("Failed to export data:", error);
+			showToast("Failed to export data", "error");
+		}
 	};
 
 	const handleImportData = (e) => {
@@ -662,7 +744,12 @@ function App() {
 		const reader = new FileReader();
 		reader.onload = async (event) => {
 			try {
-				const fromFile = JSON.parse(event.target.result);
+				const text = event.target?.result;
+				if (typeof text !== "string") {
+					throw new Error("Invalid file content");
+				}
+
+				const fromFile = JSON.parse(text);
 				await importData(fromFile);
 				await refreshHistory();
 				await refreshCollections();
@@ -794,13 +881,13 @@ function App() {
 						icon={History}
 						label="History"
 						active={activeSpace === "history"}
-						onClick={() => handleSetActiveSpace("history")}
+						onClick={() => setActiveSpace("history")}
 					/>
 					<SidebarItem
 						icon={Layout}
 						label="Collections"
 						active={activeSpace === "collections"}
-						onClick={() => handleSetActiveSpace("collections")}
+						onClick={() => setActiveSpace("collections")}
 					/>
 
 					<div className="mt-4">
@@ -810,6 +897,11 @@ function App() {
 						{/* History */}
 						{activeSpace === "history" && (
 							<div className="flex flex-col gap-1 w-full">
+								{history.length === 0 && (
+									<div className="px-3 py-4 text-xs text-stone-600 text-center italic">
+										No collections yet
+									</div>
+								)}
 								{history.length > 0 && (
 									<div className="flex justify-end px-2 mb-1">
 										<button
@@ -822,50 +914,17 @@ function App() {
 										</button>
 									</div>
 								)}
-
-								{history.length > 0 &&
-									history.map((item) => (
-										// biome-ignore lint/a11y/useKeyWithClickEvents: nanti
-										// biome-ignore lint/a11y/noStaticElementInteractions: nanti
-										<div
-											key={item.id}
-											onClick={() => handleLoadHistoryItemById(item.id)}
-											className="group relative flex items-center w-full gap-2 px-2 py-1 text-[11px] text-left rounded hover:bg-stone-800 transition-colors border border-transparent hover:border-stone-700 cursor-pointer"
-											title={item.url}
-										>
-											{/* METHOD BADGE */}
-											<span
-												className={`
-                      shrink-0 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border
-                      ${getMethodClass(item.method)}
-                    `}
-											>
-												{item.method}
-											</span>
-
-											<span className="flex-1 truncate text-stone-400 font-mono group-hover:text-stone-200 transition-colors">
-												{item.url}
-											</span>
-
-											<span className="text-[10px] text-stone-600 group-hover:text-stone-500">
-												{item.status || "—"}
-											</span>
-
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													confirmDeleteHistoryItem(item);
-												}}
-												className="hidden group-hover:block p-1 text-stone-500 hover:text-red-400 rounded transition-all"
-												title="Delete from history"
-											>
-												<Trash2 className="w-3 h-3" />
-											</button>
-										</div>
-									))}
+								{history.map((item) => (
+									<HistoryItem
+										key={item.id}
+										item={item}
+										onLoadRequest={handleLoadHistoryItemById}
+										onDeleteRequest={confirmDeleteHistoryItem}
+									/>
+								))}
 							</div>
 						)}
+
 						{/* Collections */}
 						{activeSpace === "collections" && (
 							<div className="flex flex-col gap-1 w-full">
@@ -916,7 +975,6 @@ function App() {
 					<div
 						className="flex overflow-x-auto no-scrollbar scroll-smooth"
 						onWheel={(e) => {
-							// Directly shift the horizontal scroll by the vertical wheel amount
 							e.currentTarget.scrollLeft += e.deltaY;
 						}}
 					>
@@ -926,7 +984,7 @@ function App() {
 								// biome-ignore lint/a11y/useKeyWithClickEvents: nanti
 								<div
 									key={tab.id}
-									className="shrink-0" // <-- THIS prevents squishing so it actually scrolls!
+									className="shrink-0"
 									onClick={() =>
 										dispatch({
 											type: "SET_ACTIVE_WORKSPACE_TAB",
@@ -945,6 +1003,8 @@ function App() {
 								</div>
 							))}
 					</div>
+
+					{/* New Tab Button */}
 					<button
 						type="button"
 						onClick={() => dispatch({ type: "ADD_WORKSPACE_TAB" })}
@@ -991,7 +1051,7 @@ function App() {
 									/>
 								</div>
 
-								{/* SNIPPER GENERATOR */}
+								{/* SNIPPET GENERATOR */}
 								{/** biome-ignore lint/a11y/noStaticElementInteractions: nanti */}
 								{/** biome-ignore lint/a11y/useKeyWithClickEvents: nanti */}
 								<div
@@ -1190,6 +1250,20 @@ function App() {
 											</button>
 										);
 									})}
+
+									{state.networkDelay > 0 && (
+										<div
+											className="ml-auto flex items-center px-3 cursor-help opacity-70 hover:opacity-100 transition-opacity"
+											title={`Network Throttling Active: ${state.networkDelay}ms`}
+										>
+											<div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+												<Zap className="w-3 h-3 text-amber-500 animate-pulse" />
+												<span className="text-[9px] font-mono text-amber-500/80 font-semibold tracking-wider">
+													{state.networkDelay}MS
+												</span>
+											</div>
+										</div>
+									)}
 								</div>
 
 								{/* Tab Content Area */}
@@ -1206,7 +1280,7 @@ function App() {
 													options={["none", "bearer", "basic"]}
 													onChange={(e) =>
 														dispatch({
-															type: "UPDATE_AUTH",
+															type: "SET_AUTH",
 															payload: { type: e.target.value },
 														})
 													}
@@ -1223,17 +1297,20 @@ function App() {
 
 												{activeWorkspace.auth?.type === "bearer" && (
 													<div className="max-w-md space-y-3">
-														{/** biome-ignore lint/a11y/noLabelWithoutControl: nanti*/}
-														<label className="block text-xs text-stone-400">
+														<label
+															htmlFor="bearer-token"
+															className="block text-xs text-stone-400"
+														>
 															Bearer Token
 														</label>
 														<input
+															id="bearer-token"
 															type="text"
 															placeholder="ey..."
 															value={activeWorkspace.auth?.token || ""}
 															onChange={(e) =>
 																dispatch({
-																	type: "UPDATE_AUTH",
+																	type: "SET_AUTH",
 																	payload: { token: e.target.value },
 																})
 															}
@@ -1245,16 +1322,19 @@ function App() {
 												{activeWorkspace.auth?.type === "basic" && (
 													<div className="max-w-md space-y-3">
 														<div>
-															{/** biome-ignore lint/a11y/noLabelWithoutControl: nanti*/}
-															<label className="block text-xs text-stone-400 mb-1">
+															<label
+																htmlFor="auth-username"
+																className="block text-xs text-stone-400 mb-1"
+															>
 																Username
 															</label>
 															<input
+																id="auth-username"
 																type="text"
 																value={activeWorkspace.auth?.username || ""}
 																onChange={(e) =>
 																	dispatch({
-																		type: "UPDATE_AUTH",
+																		type: "SET_AUTH",
 																		payload: { username: e.target.value },
 																	})
 																}
@@ -1262,16 +1342,19 @@ function App() {
 															/>
 														</div>
 														<div>
-															{/** biome-ignore lint/a11y/noLabelWithoutControl: nanti*/}
-															<label className="block text-xs text-stone-400 mb-1">
+															<label
+																htmlFor="auth-password"
+																className="block text-xs text-stone-400 mb-1"
+															>
 																Password
 															</label>
 															<input
+																id="auth-password"
 																type="password"
 																value={activeWorkspace.auth?.password || ""}
 																onChange={(e) =>
 																	dispatch({
-																		type: "UPDATE_AUTH",
+																		type: "SET_AUTH",
 																		payload: { password: e.target.value },
 																	})
 																}
@@ -1933,6 +2016,31 @@ function App() {
 										/>
 									</label>
 								</div>
+							</div>
+
+							<div className="pt-4 border-t border-stone-800">
+								<h4 className="text-sm font-medium text-stone-300 mb-1 flex items-center gap-2">
+									<Zap className="w-4 h-4 text-amber-500" />
+									Network Throttling
+								</h4>
+								<p className="text-xs text-stone-500 mb-4">
+									Simulate a slow connection to test your loading states.
+								</p>
+								<select
+									value={state.networkDelay || 0}
+									onChange={(e) =>
+										dispatch({
+											type: "SET_NETWORK_DELAY",
+											payload: Number(e.target.value),
+										})
+									}
+									className="w-full bg-stone-950 border border-stone-700 rounded-md px-3 py-2 text-sm text-stone-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+								>
+									<option value={0}>No Throttling (Direct)</option>
+									<option value={500}>Fast 3G (500ms delay)</option>
+									<option value={2000}>Slow 3G (2000ms delay)</option>
+									<option value={5000}>Extremely Slow (5000ms delay)</option>
+								</select>
 							</div>
 
 							<div className="pt-4 border-t border-stone-800">
