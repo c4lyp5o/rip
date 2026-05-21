@@ -1,4 +1,5 @@
 import { fetch } from "@tauri-apps/plugin-http";
+import { normalizeUrlInput } from "./normalizeUrl";
 
 const formatSize = (bytes) => {
 	if (!bytes) return "Unknown";
@@ -17,9 +18,17 @@ export const executeRequest = async ({
 	auth,
 }) => {
 	if (!url) throw new Error("URL is required to make a request.");
+
+	const normalizedUrl = normalizeUrlInput(url);
+
+	let urlObj;
+	try {
+		urlObj = new URL(normalizedUrl);
+	} catch {
+		throw new Error("Invalid URL. Please enter a valid URL or hostname.");
+	}
+
 	if (import.meta.env.DEV) console.log("URL:", url);
-	const urlObj = new URL(url);
-	if (import.meta.env.DEV) console.log("Constructed URL:", urlObj.toString());
 
 	const requestHeaders = new Headers();
 
@@ -58,8 +67,11 @@ export const executeRequest = async ({
 		responseHeaders.push({ key, value });
 	}
 
-	const contentType = response.headers.get("content-type") || "";
+	const contentType = (
+		response.headers.get("content-type") || ""
+	).toLowerCase();
 	if (import.meta.env.DEV) console.log("Response Content-Type:", contentType);
+
 	let content;
 	let type = "text";
 
@@ -73,28 +85,56 @@ export const executeRequest = async ({
 	}
 	if (import.meta.env.DEV)
 		console.log("Content-Disposition filename:", filename);
-	if (contentType.includes("application/json")) {
-		content = await response.json();
-		type = "json";
-	} else if (
-		contentType.includes("image") ||
-		contentType.includes("audio") ||
-		contentType.includes("video") ||
+
+	const isJsonType =
+		contentType.includes("application/json") || contentType.includes("+json");
+
+	const isHtmlType = contentType.includes("text/html");
+
+	const isTextLikeType =
+		contentType.startsWith("text/") ||
+		contentType.includes("application/xml") ||
+		contentType.includes("text/xml") ||
+		contentType.includes("+xml") ||
+		contentType.includes("application/javascript") ||
+		contentType.includes("text/javascript") ||
+		contentType.includes("application/x-www-form-urlencoded") ||
+		contentType.includes("application/csv") ||
+		contentType.includes("text/csv") ||
+		contentType.includes("image/svg+xml");
+
+	const isBinaryType =
+		contentType.includes("image/") ||
+		contentType.includes("audio/") ||
+		contentType.includes("video/") ||
 		contentType.includes("application/pdf") ||
 		contentType.includes("application/zip") ||
 		contentType.includes("application/octet-stream") ||
-		contentType.includes("application/x-")
-	) {
+		contentType.includes("application/x-");
+
+	if (isJsonType) {
+		content = await response.json();
+		type = "json";
+	} else if (isHtmlType) {
+		content = await response.text();
+		type = "html";
+	} else if (isBinaryType) {
 		content = await response.blob();
 		type = "blob";
 	} else {
 		const text = await response.text();
-		try {
-			content = JSON.parse(text);
-			type = "json";
-		} catch {
+
+		if (isTextLikeType) {
 			content = text;
-			type = "html";
+			type = "text";
+		} else {
+			try {
+				content = JSON.parse(text);
+				type = "json";
+			} catch {
+				content = text;
+				type = "text";
+			}
 		}
 	}
 
