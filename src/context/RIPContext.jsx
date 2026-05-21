@@ -15,6 +15,8 @@ import {
 	getCollectionsTree,
 } from "../utils/historyDb";
 
+const RipContext = createContext(null);
+
 const defaultWorkspaceTab = {
 	id: crypto.randomUUID(),
 	name: "New Request",
@@ -46,15 +48,16 @@ const defaultWorkspaceTab = {
 	body: "",
 	auth: { type: "none", token: "", username: "", password: "" },
 	response: null,
+	isFetching: false,
 };
 
 const ripReducerInitialState = {
 	methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-	isFetching: false,
 	workspaceTabs: [defaultWorkspaceTab],
 	activeWorkspaceTabId: defaultWorkspaceTab.id,
 	history: [],
 	collections: [],
+	networkDelay: 0,
 };
 
 const getActiveTab = (state) =>
@@ -83,7 +86,14 @@ const syncUrlFromQueries = (url, queries) => {
 const ripReducer = (state, action) => {
 	switch (action.type) {
 		case "SET_SAVED_REQUEST_ID": {
-			return updateActiveTab(state, { savedRequestId: action.payload });
+			const { tabId, savedRequestId } = action.payload;
+
+			return {
+				...state,
+				workspaceTabs: state.workspaceTabs.map((tab) =>
+					tab.id === tabId ? { ...tab, savedRequestId } : tab,
+				),
+			};
 		}
 		case "SET_TAB_NAME": {
 			const { id, name } = action.payload;
@@ -206,7 +216,7 @@ const ripReducer = (state, action) => {
 				),
 			};
 		}
-		case "UPDATE_AUTH": {
+		case "SET_AUTH": {
 			const currentAuth = getActiveTab(state).auth || {
 				type: "none",
 				token: "",
@@ -218,79 +228,95 @@ const ripReducer = (state, action) => {
 			});
 		}
 		case "SET_RESPONSE": {
+			const { tabId, response } = action.payload;
+
 			return {
 				...state,
-				isFetching: false,
 				workspaceTabs: state.workspaceTabs.map((tab) =>
-					tab.id === state.activeWorkspaceTabId
+					tab.id === tabId
 						? {
 								...tab,
+								isFetching: false,
 								name:
 									tab.name === "New Request" && tab.url ? tab.url : tab.name,
-								response: action.payload,
+								response,
 							}
 						: tab,
 				),
 			};
 		}
 		case "SET_FETCHING": {
-			return { ...state, isFetching: action.payload };
+			const { tabId, isFetching } = action.payload;
+
+			return {
+				...state,
+				workspaceTabs: state.workspaceTabs.map((tab) =>
+					tab.id === tabId ? { ...tab, isFetching } : tab,
+				),
+			};
 		}
 		case "ADD_WORKSPACE_TAB": {
-			const uuid = crypto.randomUUID();
 			const newWorkspaceTabs = [
 				...state.workspaceTabs,
 				{
-					id: uuid,
+					id: crypto.randomUUID(),
 					name: defaultWorkspaceTab.name,
 					savedRequestId: null,
 					activeSubTab: defaultWorkspaceTab.activeSubTab,
 					method: defaultWorkspaceTab.method,
 					url: defaultWorkspaceTab.url,
-					queries: [...defaultWorkspaceTab.queries],
-					headers: [...defaultWorkspaceTab.headers].map((h) => ({ ...h })),
+					queries: [...defaultWorkspaceTab.queries].map((q) => ({ ...q })),
+					headers: [...defaultWorkspaceTab.headers].map((h) => ({
+						...h,
+						id: crypto.randomUUID(),
+					})),
 					body: defaultWorkspaceTab.body,
-					auth: defaultWorkspaceTab.auth
-						? typeof defaultWorkspaceTab.auth === "string"
-							? JSON.parse(defaultWorkspaceTab.auth)
-							: defaultWorkspaceTab.auth
-						: { type: "none", token: "", username: "", password: "" },
+					auth: { ...defaultWorkspaceTab.auth },
 					response: defaultWorkspaceTab.response,
+					isFetching: defaultWorkspaceTab.isFetching,
 				},
 			];
 			return {
 				...state,
 				workspaceTabs: newWorkspaceTabs,
-				activeWorkspaceTabId: uuid,
+				activeWorkspaceTabId: crypto.randomUUID(),
 			};
 		}
 		case "ADD_WORKSPACE_TAB_FROM_DB": {
 			const { id, data } = action.payload;
-			let restoredHeaders = defaultWorkspaceTab.headers;
-			if (Array.isArray(data.headers)) {
-				restoredHeaders = data.headers;
-			} else if (data.headers && typeof data.headers === "object") {
-				restoredHeaders = Object.entries(data.headers).map(([key, value]) => ({
+			let restoredHeaders = defaultWorkspaceTab.headers.map((h) => ({
+				...h,
+				id: crypto.randomUUID(),
+			}));
+			if (data.headers && Array.isArray(data.headers)) {
+				restoredHeaders = data.headers.map((h) => ({
+					...h,
 					id: crypto.randomUUID(),
-					key,
-					value,
-					active: true,
 				}));
 			}
 
 			const newTab = {
 				...defaultWorkspaceTab,
 				id: id,
+				name: data.name || data.url,
 				savedRequestId: data.collection_id ? data.id : null,
+				activeSubTab: "response",
 				method: data.method,
 				url: data.url,
 				queries:
 					data.queries && data.queries.length > 0
-						? data.queries
+						? data.queries.map((q) => ({ ...q }))
 						: parseUrlInput(data.url).newQueries,
 				headers: restoredHeaders,
 				body: data.body || "",
-				name: data.name || data.url,
+				auth:
+					data.auth && typeof data.auth === "object"
+						? { ...data.auth }
+						: data.auth && typeof data.auth === "string"
+							? JSON.parse(data.auth)
+							: { type: "none", token: "", username: "", password: "" },
+				response: null,
+				isFetching: false,
 			};
 			return {
 				...state,
@@ -341,12 +367,13 @@ const ripReducer = (state, action) => {
 		case "SET_COLLECTIONS": {
 			return { ...state, collections: action.payload };
 		}
+		case "SET_NETWORK_DELAY": {
+			return { ...state, networkDelay: action.payload };
+		}
 		default:
 			return state;
 	}
 };
-
-const RipContext = createContext();
 
 export const RipProvider = ({ children }) => {
 	const [state, dispatch] = useReducer(ripReducer, ripReducerInitialState);
@@ -363,42 +390,54 @@ export const RipProvider = ({ children }) => {
 		dispatch({ type: "SET_COLLECTIONS", payload: collections });
 	}, []);
 
-	const handleRequest = useCallback(async (currentTab) => {
-		if (!currentTab) return;
+	const handleRequest = useCallback(
+		async (currentTab, delay = 0) => {
+			if (!currentTab) return;
 
-		dispatch({ type: "SET_FETCHING", payload: true });
+			dispatch({
+				type: "SET_FETCHING",
+				payload: { tabId: currentTab.id, isFetching: true },
+			});
 
-		let response = null;
-
-		try {
-			response = await executeRequest(currentTab);
-
-			if (!currentTab.savedRequestId) {
-				await addToHistory({
-					name: currentTab.url,
-					method: currentTab.method,
-					url: currentTab.url,
-					status: response.status,
-					time: response.timeRaw,
-					size: response.size,
-					headers: currentTab.headers,
-					queries: currentTab.queries,
-					body: currentTab.body,
-					auth: currentTab.auth,
-				});
-
-				await refreshHistory();
+			if (delay > 0) {
+				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
-		} catch (error) {
-			if (import.meta.env.DEV) console.error("Request failed:", error);
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			response = { type: "error", content: errorMessage };
-			console.log(response);
-		} finally {
-			dispatch({ type: "SET_RESPONSE", payload: response });
-		}
-	}, []);
+
+			let response = null;
+
+			try {
+				response = await executeRequest(currentTab);
+
+				if (!currentTab.savedRequestId) {
+					await addToHistory({
+						name: currentTab.url,
+						method: currentTab.method,
+						url: currentTab.url,
+						status: response.status,
+						time: response.timeRaw,
+						size: response.size,
+						headers: currentTab.headers,
+						queries: currentTab.queries,
+						body: currentTab.body,
+						auth: currentTab.auth,
+					});
+
+					await refreshHistory();
+				}
+			} catch (error) {
+				if (import.meta.env.DEV) console.error("Request failed:", error);
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				response = { type: "error", content: errorMessage };
+			} finally {
+				dispatch({
+					type: "SET_RESPONSE",
+					payload: { tabId: currentTab.id, response },
+				});
+			}
+		},
+		[refreshHistory],
+	);
 
 	useEffect(() => {
 		const init = async () => {
@@ -429,5 +468,9 @@ export const RipProvider = ({ children }) => {
 };
 
 export const useRip = () => {
-	return useContext(RipContext);
+	const context = useContext(RipContext);
+	if (!context) {
+		throw new Error("useRip must be used within RipProvider");
+	}
+	return context;
 };
