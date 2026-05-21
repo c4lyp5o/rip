@@ -8,7 +8,12 @@ import {
 } from "react";
 import { executeRequest } from "../utils/requestHelper";
 import { parseUrlInput } from "../utils/urlParser";
-import { addToHistory } from "../utils/historyDb";
+import {
+	initDb,
+	addToHistory,
+	getHistoryItems,
+	getCollectionsTree,
+} from "../utils/historyDb";
 
 const defaultWorkspaceTab = {
 	id: crypto.randomUUID(),
@@ -62,6 +67,19 @@ const updateActiveTab = (state, updates) => ({
 	),
 });
 
+const syncUrlFromQueries = (url, queries) => {
+	const baseUrl = url.split("?")[0];
+	const activeQueries = queries.filter((q) => q.active && (q.key || q.value));
+
+	if (activeQueries.length === 0) return baseUrl;
+
+	const queryString = activeQueries
+		.map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
+		.join("&");
+
+	return `${baseUrl}?${queryString}`;
+};
+
 const ripReducer = (state, action) => {
 	switch (action.type) {
 		case "SET_SAVED_REQUEST_ID": {
@@ -97,21 +115,25 @@ const ripReducer = (state, action) => {
 			};
 		}
 		case "SET_URL": {
-			return updateActiveTab(state, { url: action.payload });
+			const newUrl = action.payload;
+			const tab = getActiveTab(state);
+
+			const currentQueryString = tab.url.split("?")[1] || "";
+			const newQueryString = newUrl.split("?")[1] || "";
+
+			if (currentQueryString !== newQueryString) {
+				const { newQueries } = parseUrlInput(newUrl);
+				const inactiveQueries = (tab.queries || []).filter((q) => !q.active);
+				return updateActiveTab(state, {
+					url: newUrl,
+					queries: [...newQueries, ...inactiveQueries],
+				});
+			}
+
+			return updateActiveTab(state, { url: newUrl });
 		}
 		case "SET_HEADERS": {
 			return updateActiveTab(state, { headers: action.payload });
-		}
-		case "SET_QUERIES": {
-			return updateActiveTab(state, { queries: action.payload });
-		}
-		case "ADD_QUERIES": {
-			const currentTab = state.workspaceTabs.find(
-				(t) => t.id === state.activeWorkspaceTabId,
-			);
-			return updateActiveTab(state, {
-				queries: [...(currentTab.queries || []), ...action.payload],
-			});
 		}
 		case "ADD_QUERY": {
 			const newQuery = {
@@ -120,26 +142,31 @@ const ripReducer = (state, action) => {
 				value: "",
 				active: true,
 			};
-
-			return updateActiveTab(state, {
-				queries: [...(getActiveTab(state).queries || []), newQuery],
-			});
+			const updatedQueries = [...(getActiveTab(state).queries || []), newQuery];
+			const newUrl = syncUrlFromQueries(
+				getActiveTab(state).url,
+				updatedQueries,
+			);
+			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "DELETE_QUERY": {
-			const currentQueries = getActiveTab(state).queries || [];
-			return updateActiveTab(state, {
-				queries: currentQueries.filter((q) => q.id !== action.payload),
-			});
+			const updatedQueries = (getActiveTab(state).queries || []).filter(
+				(q) => q.id !== action.payload,
+			);
+			const newUrl = syncUrlFromQueries(
+				getActiveTab(state).url,
+				updatedQueries,
+			);
+			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "UPDATE_QUERY": {
 			const { id, field, value } = action.payload;
-			const currentQueries = getActiveTab(state).queries || [];
-
-			const updatedQueries = currentQueries.map((q) =>
+			const tab = getActiveTab(state);
+			const updatedQueries = (tab.queries || []).map((q) =>
 				q.id === id ? { ...q, [field]: value } : q,
 			);
-
-			return updateActiveTab(state, { queries: updatedQueries });
+			const newUrl = syncUrlFromQueries(tab.url, updatedQueries);
+			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "ADD_HEADER": {
 			const newHeader = {
@@ -237,9 +264,8 @@ const ripReducer = (state, action) => {
 				activeWorkspaceTabId: uuid,
 			};
 		}
-		case "ADD_WORKSPACE_TAB_FROM_HISTORY": {
+		case "ADD_WORKSPACE_TAB_FROM_DB": {
 			const { id, data } = action.payload;
-			const { newQueries } = parseUrlInput(data.url);
 			let restoredHeaders = defaultWorkspaceTab.headers;
 			if (Array.isArray(data.headers)) {
 				restoredHeaders = data.headers;
@@ -257,8 +283,11 @@ const ripReducer = (state, action) => {
 				id: id,
 				savedRequestId: data.collection_id ? data.id : null,
 				method: data.method,
-				url: data.url.split("?")[0],
-				queries: newQueries,
+				url: data.url,
+				queries:
+					data.queries && data.queries.length > 0
+						? data.queries
+						: parseUrlInput(data.url).newQueries,
 				headers: restoredHeaders,
 				body: data.body || "",
 				name: data.name || data.url,
@@ -300,6 +329,15 @@ const ripReducer = (state, action) => {
 		case "SET_HISTORY": {
 			return { ...state, history: action.payload };
 		}
+		case "DELETE_HISTORY_ITEM": {
+			const newHistory = state.history.filter(
+				(item) => item.id !== action.payload,
+			);
+			return { ...state, history: newHistory };
+		}
+		case "CLEAR_HISTORY": {
+			return { ...state, history: [] };
+		}
 		case "SET_COLLECTIONS": {
 			return { ...state, collections: action.payload };
 		}
@@ -314,6 +352,16 @@ export const RipProvider = ({ children }) => {
 	const [state, dispatch] = useReducer(ripReducer, ripReducerInitialState);
 
 	const fetcherRef = useRef();
+
+	const refreshHistory = useCallback(async () => {
+		const history = await getHistoryItems();
+		dispatch({ type: "SET_HISTORY", payload: history });
+	}, []);
+
+	const refreshCollections = useCallback(async () => {
+		const collections = await getCollectionsTree();
+		dispatch({ type: "SET_COLLECTIONS", payload: collections });
+	}, []);
 
 	const handleRequest = useCallback(async (currentTab) => {
 		if (!currentTab) return;
@@ -338,6 +386,8 @@ export const RipProvider = ({ children }) => {
 					body: currentTab.body,
 					auth: currentTab.auth,
 				});
+
+				await refreshHistory();
 			}
 		} catch (error) {
 			if (import.meta.env.DEV) console.error("Request failed:", error);
@@ -351,11 +401,28 @@ export const RipProvider = ({ children }) => {
 	}, []);
 
 	useEffect(() => {
+		const init = async () => {
+			await initDb();
+			await refreshHistory();
+			await refreshCollections();
+		};
+		init();
+	}, [refreshHistory, refreshCollections]);
+
+	useEffect(() => {
 		fetcherRef.current = handleRequest;
 	}, [handleRequest]);
 
 	return (
-		<RipContext.Provider value={{ state, dispatch, fetcherRef }}>
+		<RipContext.Provider
+			value={{
+				state,
+				dispatch,
+				fetcherRef,
+				refreshHistory,
+				refreshCollections,
+			}}
+		>
 			{children}
 		</RipContext.Provider>
 	);
