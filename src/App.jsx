@@ -4,8 +4,6 @@ import { useToast } from "./context/ToastContext";
 import { parseUrlInput } from "./utils/urlParser";
 import { generateSnippet } from "./utils/snippetGenerator";
 import {
-	initDb,
-	getHistoryItems,
 	deleteHistoryItem,
 	clearHistory,
 	getCollectionsTree,
@@ -39,6 +37,7 @@ import {
 	Plus,
 	X,
 	Layers,
+	Folder,
 	Upload,
 	Key,
 	Settings,
@@ -375,18 +374,22 @@ const TreeItem = memo(
 // --- Main App Component ---
 
 function App() {
-	const { state, dispatch, fetcherRef } = useRip();
+	const { state, dispatch, fetcherRef, refreshHistory, refreshCollections } =
+		useRip();
 	const { showToast } = useToast();
-	const { methods, isFetching, workspaceTabs, activeWorkspaceTabId } = state;
+	const {
+		methods,
+		isFetching,
+		workspaceTabs,
+		activeWorkspaceTabId,
+		history,
+		collections,
+	} = state;
 
 	// UI Local State
 	const [activeSpace, setActiveSpace] = useState("history");
 	const [copied, setCopied] = useState(false);
 	const [responseView, setResponseView] = useState("body");
-
-	// Sidedbar
-	const [history, setHistory] = useState([]);
-	const [collections, setCollections] = useState([]);
 
 	const [showSaveMenu, setShowSaveMenu] = useState(false);
 
@@ -459,12 +462,11 @@ function App() {
 	const handleFetch = async () => {
 		if (!activeWorkspace) return;
 		try {
-			await fetcherRef.current(activeWorkspace);
-			// experimental
-			// if (urlDraft !== activeWorkspace.url) {
-			// 	dispatch({ type: "SET_URL", payload: urlDraft });
-			// }
-			if (activeSpace === "history") await refreshHistory();
+			dispatch({ type: "SET_ACTIVE_SUB_TAB", payload: "response" });
+			setResponseView("body");
+			fetcherRef.current(activeWorkspace).catch((err) => {
+				if (import.meta.env.DEV) console.error(err);
+			});
 		} catch (error) {
 			if (import.meta.env.DEV) console.error(error);
 		}
@@ -474,10 +476,12 @@ function App() {
 		try {
 			const formattedBody = JSON.stringify(
 				JSON.parse(activeWorkspace.body.replace(/\n{3,}/g, "\n\n").trim()),
+				// if using url draft
 				// JSON.parse(bodyDraft.replace(/\n{3,}/g, "\n\n").trim()),
 				null,
 				2,
 			);
+			// if using url draft
 			// setBodyDraft(formattedBody);
 			dispatch({ type: "SET_BODY", payload: formattedBody });
 			showToast("JSON formatted successfully", "success");
@@ -489,13 +493,11 @@ function App() {
 
 	const handleCopy = async () => {
 		if (!activeWorkspace.response) return;
-
 		try {
 			const textToCopy =
 				activeWorkspace.response.type === "json"
 					? JSON.stringify(activeWorkspace.response.content, null, 2)
 					: activeWorkspace.response.content;
-
 			await navigator.clipboard.writeText(textToCopy);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 1500);
@@ -518,10 +520,6 @@ function App() {
 		}
 	};
 
-	const handleAddTab = () => {
-		dispatch({ type: "ADD_WORKSPACE_TAB" });
-	};
-
 	const handleDeleteTab = (tabId) => {
 		dispatch({ type: "DELETE_WORKSPACE_TAB", payload: tabId });
 	};
@@ -529,62 +527,14 @@ function App() {
 	const handleKeyDown = (e) => {
 		if (e.key === "Enter" && !isFetching) {
 			e.preventDefault();
-
-			const { cleanUrl, newQueries } = parseUrlInput(activeWorkspace.url);
-
-			dispatch({ type: "SET_URL", payload: cleanUrl });
-			if (newQueries.length > 0) {
-				dispatch({ type: "ADD_QUERIES", payload: newQueries });
-			}
-
-			fetcherRef
-				.current({
-					...activeWorkspace,
-					url: cleanUrl,
-					queries: [...(activeWorkspace.queries || []), ...newQueries],
-				})
-				.then(() => {
-					if (activeSpace === "history") refreshHistory();
-				})
-				.catch((err) => {
-					if (import.meta.env.DEV) console.error(err);
-				});
-		}
-	};
-
-	const handleUrlChange = (e) => {
-		dispatch({ type: "SET_URL", payload: e.target.value });
-	};
-
-	const handleBlur = () => {
-		if (!activeWorkspace) return;
-		const { cleanUrl, newQueries } = parseUrlInput(activeWorkspace.url);
-		// if using url draft
-		// const { cleanUrl, newQueries } = parseUrlInput(urlDraft);
-		dispatch({ type: "SET_URL", payload: cleanUrl });
-		// if using url draft
-		// setUrlDraft(cleanUrl);
-		if (newQueries.length > 0)
-			dispatch({ type: "ADD_QUERIES", payload: newQueries });
-	};
-
-	const handlePaste = (e) => {
-		const pastedText = e.clipboardData.getData("text");
-		if (pastedText.includes("?") || pastedText.match(/^(https?):\/\//)) {
-			e.preventDefault();
-			const { cleanUrl, newQueries } = parseUrlInput(pastedText);
-			dispatch({ type: "SET_URL", payload: cleanUrl });
-			// experimental
-			// setUrlDraft(cleanUrl);
-			if (newQueries.length > 0)
-				dispatch({ type: "ADD_QUERIES", payload: newQueries });
+			handleFetch();
 		}
 	};
 
 	const handleLoadRequest = (historyItem) => {
 		const newTabId = crypto.randomUUID();
 		dispatch({
-			type: "ADD_WORKSPACE_TAB_FROM_HISTORY",
+			type: "ADD_WORKSPACE_TAB_FROM_DB",
 			payload: {
 				id: newTabId,
 				data: historyItem,
@@ -601,16 +551,6 @@ function App() {
 		[history],
 	);
 
-	const refreshHistory = async () => {
-		const data = await getHistoryItems();
-		setHistory(data);
-	};
-
-	const refreshCollections = async () => {
-		const data = await getCollectionsTree();
-		setCollections(data);
-	};
-
 	const confirmDeleteHistoryItem = (item) => {
 		setConfirmModal({
 			isOpen: true,
@@ -618,7 +558,7 @@ function App() {
 			message: `Remove this ${item.method} request to ${item.url} from history?`,
 			onConfirm: async () => {
 				await deleteHistoryItem(item.id);
-				await refreshHistory();
+				dispatch({ type: "DELETE_HISTORY_ITEM", payload: item.id });
 				setConfirmModal({ isOpen: false });
 			},
 		});
@@ -632,7 +572,7 @@ function App() {
 				"Are you sure you want to delete all request history? This action cannot be undone.",
 			onConfirm: async () => {
 				await clearHistory();
-				await refreshHistory();
+				dispatch({ type: "CLEAR_HISTORY" });
 				setConfirmModal({ isOpen: false });
 			},
 		});
@@ -673,9 +613,7 @@ function App() {
 			body: activeWorkspace.body,
 			auth: activeWorkspace.auth,
 		});
-
 		await refreshCollections();
-		showToast("Request updated", "success");
 	};
 
 	const confirmDeleteCollection = (col) => {
@@ -715,7 +653,7 @@ function App() {
 		a.download = `rip-backup-${new Date().toISOString().slice(0, 10)}.json`;
 		a.click();
 		URL.revokeObjectURL(url);
-		showToast(`Backup file downloaded as ${a.download}!`);
+		showToast(`Backup file downloaded as ${a.download}!`, "success");
 	};
 
 	const handleImportData = (e) => {
@@ -724,8 +662,8 @@ function App() {
 		const reader = new FileReader();
 		reader.onload = async (event) => {
 			try {
-				const data = JSON.parse(event.target.result);
-				await importData(data);
+				const fromFile = JSON.parse(event.target.result);
+				await importData(fromFile);
 				await refreshHistory();
 				await refreshCollections();
 				setIsSettingsModalOpen(false);
@@ -805,7 +743,7 @@ function App() {
 			// New Tab (Ctrl/Cmd + T)
 			if (isModifier && e.key.toLowerCase() === "t") {
 				e.preventDefault();
-				handleAddTab();
+				dispatch({ type: "ADD_WORKSPACE_TAB" });
 			}
 
 			// Send Request (Ctrl/Cmd + Enter)
@@ -826,14 +764,6 @@ function App() {
 	// 	setUrlDraft(activeWorkspace?.url ?? "");
 	// 	setBodyDraft(activeWorkspace?.body ?? "");
 	// }, [activeWorkspaceTabId]);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: load only once
-	useEffect(() => {
-		initDb().then(() => {
-			refreshHistory();
-			refreshCollections();
-		});
-	}, []);
 
 	return (
 		<div className="flex h-screen w-full bg-stone-950 text-stone-100 font-sans overflow-hidden">
@@ -1017,7 +947,7 @@ function App() {
 					</div>
 					<button
 						type="button"
-						onClick={handleAddTab}
+						onClick={() => dispatch({ type: "ADD_WORKSPACE_TAB" })}
 						className="px-2 h-7 flex items-center justify-center text-stone-500 hover:text-stone-300 shrink-0"
 					>
 						<Plus className="w-4 h-4" />
@@ -1045,12 +975,13 @@ function App() {
 									<input
 										type="text"
 										value={activeWorkspace.url}
-										onChange={handleUrlChange}
+										onChange={(e) =>
+											dispatch({ type: "SET_URL", payload: e.target.value })
+										}
 										// if using url draft
 										// value={urlDraft}
 										// onChange={(e) => setUrlDraft(e.target.value)}
-										onBlur={handleBlur}
-										onPaste={handlePaste}
+										// onBlur={handleBlur}
 										onKeyDown={handleKeyDown}
 										placeholder="api.example.com/v1/endpoint"
 										className="w-full h-full bg-transparent px-2 text-xs text-stone-100 placeholder-stone-600 font-mono outline-none"
@@ -1712,7 +1643,16 @@ function App() {
 
 											{/* Response Content */}
 											<div className="flex-1 overflow-auto bg-stone-950 p-3 relative">
-												{!activeWorkspace.response && (
+												{isFetching && (
+													<div className="absolute inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm flex-col gap-4 text-emerald-500 animate-in fade-in duration-200">
+														<Loader2 className="w-8 h-8 animate-spin" />
+														<span className="text-xs font-mono tracking-widest uppercase animate-pulse">
+															Fetching Response...
+														</span>
+													</div>
+												)}
+
+												{!activeWorkspace.response && !isFetching && (
 													<div className="absolute inset-0 flex items-center justify-center text-stone-700 flex-col gap-2">
 														<Globe className="w-8 h-8 opacity-20" />
 														<span className="text-sm">
