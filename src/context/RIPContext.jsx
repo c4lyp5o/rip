@@ -45,7 +45,9 @@ const defaultWorkspaceTab = {
 			active: true,
 		},
 	],
+	bodyType: "raw",
 	body: "",
+	formData: [],
 	auth: { type: "none", token: "", username: "", password: "" },
 	response: null,
 	isFetching: false,
@@ -206,6 +208,9 @@ const ripReducer = (state, action) => {
 
 			return updateActiveTab(state, { headers: updatedHeaders });
 		}
+		case "SET_BODY_TYPE": {
+			return updateActiveTab(state, { bodyType: action.payload });
+		}
 		case "SET_BODY": {
 			return {
 				...state,
@@ -215,6 +220,32 @@ const ripReducer = (state, action) => {
 						: tab,
 				),
 			};
+		}
+		case "ADD_FORM_DATA": {
+			const newItem = {
+				id: crypto.randomUUID(),
+				key: "",
+				value: "",
+				type: "text",
+				file: null,
+				active: true,
+			};
+			return updateActiveTab(state, {
+				formData: [...(getActiveTab(state).formData || []), newItem],
+			});
+		}
+		case "UPDATE_FORM_DATA": {
+			const { id, field, value } = action.payload;
+			const updated = (getActiveTab(state).formData || []).map((f) =>
+				f.id === id ? { ...f, [field]: value } : f,
+			);
+			return updateActiveTab(state, { formData: updated });
+		}
+		case "DELETE_FORM_DATA": {
+			const updated = (getActiveTab(state).formData || []).filter(
+				(f) => f.id !== action.payload,
+			);
+			return updateActiveTab(state, { formData: updated });
 		}
 		case "SET_AUTH": {
 			const currentAuth = getActiveTab(state).auth || {
@@ -270,7 +301,9 @@ const ripReducer = (state, action) => {
 						...h,
 						id: crypto.randomUUID(),
 					})),
+					bodyType: defaultWorkspaceTab.bodyType,
 					body: defaultWorkspaceTab.body,
+					formData: defaultWorkspaceTab.formData,
 					auth: { ...defaultWorkspaceTab.auth },
 					response: defaultWorkspaceTab.response,
 					isFetching: defaultWorkspaceTab.isFetching,
@@ -308,7 +341,9 @@ const ripReducer = (state, action) => {
 						? data.queries.map((q) => ({ ...q }))
 						: parseUrlInput(data.url).newQueries,
 				headers: restoredHeaders,
+				bodyType: data?.bodyType || "raw",
 				body: data.body || "",
+				formData: data?.formData ? data.formData.map((f) => ({ ...f })) : [],
 				auth:
 					data.auth && typeof data.auth === "object"
 						? { ...data.auth }

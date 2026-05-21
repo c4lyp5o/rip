@@ -12,9 +12,10 @@ const formatSize = (bytes) => {
 export const executeRequest = async ({
 	method,
 	url,
-	queries,
 	headers,
+	bodyType,
 	body,
+	formData,
 	auth,
 }) => {
 	if (!url) throw new Error("URL is required to make a request.");
@@ -51,7 +52,28 @@ export const executeRequest = async ({
 	};
 
 	if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && body) {
-		options.body = typeof body === "object" ? JSON.stringify(body) : body;
+		if (bodyType === "form-data" && formData?.length > 0) {
+			const fd = new FormData();
+			let hasData = false;
+
+			formData.forEach((item) => {
+				if (item.active && item.key) {
+					if (item.type === "file" && item.file) {
+						fd.append(item.key, item.file);
+					} else {
+						fd.append(item.key, item.value || "");
+					}
+					hasData = true;
+				}
+			});
+
+			if (hasData) {
+				options.body = fd;
+				options.headers.delete("Content-Type");
+			}
+		} else if (body) {
+			options.body = typeof body === "object" ? JSON.stringify(body) : body;
+		}
 	}
 
 	const timeStart = performance.now();
