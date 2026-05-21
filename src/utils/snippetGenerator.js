@@ -1,14 +1,7 @@
 export const generateSnippet = (language, workspace) => {
 	if (!workspace || !workspace.url) throw new Error("Invalid URL");
 
-	const urlObj = workspace.url;
-
-	if (workspace.queries) {
-		workspace.queries.forEach((q) => {
-			if (q.key && q.active) urlObj.searchParams.append(q.key, q.value);
-		});
-	}
-	const fullUrl = urlObj.toString();
+	const fullUrl = workspace.url;
 	const method = workspace.method;
 
 	const activeHeaders = (workspace.headers || []).filter(

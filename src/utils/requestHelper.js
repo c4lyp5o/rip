@@ -21,12 +21,6 @@ export const executeRequest = async ({
 	const urlObj = new URL(url);
 	if (import.meta.env.DEV) console.log("Constructed URL:", urlObj.toString());
 
-	if (queries && Array.isArray(queries)) {
-		queries.forEach((q) => {
-			if (q.key && q.active) urlObj.searchParams.append(q.key, q.value);
-		});
-	}
-
 	const requestHeaders = new Headers();
 
 	if (auth?.type === "bearer" && auth.token) {
