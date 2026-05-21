@@ -7,6 +7,8 @@ export const initDb = async () => {
 
 	db = await Database.load("sqlite:history5.db");
 
+	await db.execute("PRAGMA foreign_keys = ON");
+
 	await db.execute(`
     CREATE TABLE IF NOT EXISTS history (
       date TEXT,
@@ -312,62 +314,126 @@ export const exportData = async () => {
 export const importData = async (data) => {
 	const db = await initDb();
 
-	if (data.history) {
-		for (const h of data.history) {
+	if (!data || typeof data !== "object") {
+		throw new Error("Invalid import data");
+	}
+
+	const history = Array.isArray(data.history) ? data.history : [];
+	const collections = Array.isArray(data.collections) ? data.collections : [];
+	const folders = Array.isArray(data.folders) ? data.folders : [];
+	const requests = Array.isArray(data.requests) ? data.requests : [];
+
+	const isObject = (value) => value && typeof value === "object";
+
+	for (const h of history) {
+		if (
+			!isObject(h) ||
+			typeof h.id !== "number" ||
+			typeof h.method !== "string" ||
+			typeof h.url !== "string"
+		) {
+			throw new Error("Invalid history entry in import file");
+		}
+	}
+
+	for (const c of collections) {
+		if (
+			!isObject(c) ||
+			typeof c.id !== "string" ||
+			typeof c.name !== "string"
+		) {
+			throw new Error("Invalid collection entry in import file");
+		}
+	}
+
+	for (const f of folders) {
+		if (
+			!isObject(f) ||
+			typeof f.id !== "string" ||
+			typeof f.collection_id !== "string" ||
+			typeof f.name !== "string"
+		) {
+			throw new Error("Invalid folder entry in import file");
+		}
+	}
+
+	for (const r of requests) {
+		if (
+			!isObject(r) ||
+			typeof r.id !== "string" ||
+			typeof r.collection_id !== "string" ||
+			typeof r.name !== "string" ||
+			typeof r.method !== "string" ||
+			typeof r.url !== "string"
+		) {
+			throw new Error("Invalid request entry in import file");
+		}
+	}
+
+	try {
+		await db.execute("BEGIN");
+
+		for (const h of history) {
 			await db.execute(
 				`INSERT OR REPLACE INTO history (id, date, name, method, url, status, duration, size, headers, queries, body, auth) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 				[
 					h.id,
-					h.date,
+					h.date ?? new Date().toISOString(),
 					h.name ?? null,
 					h.method,
 					h.url,
-					h.status,
-					h.duration,
-					h.size,
-					h.headers,
-					h.queries,
-					h.body,
+					h.status ?? null,
+					h.duration ?? null,
+					h.size ?? null,
+					h.headers ?? null,
+					h.queries ?? null,
+					h.body ?? null,
 					h.auth ?? null,
 				],
 			);
 		}
-	}
-	if (data.collections) {
-		for (const c of data.collections) {
+
+		for (const c of collections) {
 			await db.execute(
 				`INSERT OR REPLACE INTO collections (id, name, created_at) VALUES ($1, $2, $3)`,
-				[c.id, c.name, c.created_at],
+				[c.id, c.name, c.created_at ?? new Date().toISOString()],
 			);
 		}
-	}
-	if (data.folders) {
-		for (const f of data.folders) {
+
+		for (const f of folders) {
 			await db.execute(
 				`INSERT OR REPLACE INTO folders (id, collection_id, name, parent_id) VALUES ($1, $2, $3, $4)`,
-				[f.id, f.collection_id, f.name, f.parent_id],
+				[f.id, f.collection_id, f.name, f.parent_id ?? null],
 			);
 		}
-	}
-	if (data.requests) {
-		for (const r of data.requests) {
+
+		for (const r of requests) {
 			await db.execute(
 				`INSERT OR REPLACE INTO requests (id, collection_id, folder_id, name, method, url, headers, queries, body, auth) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				[
 					r.id,
 					r.collection_id,
-					r.folder_id,
+					r.folder_id ?? null,
 					r.name,
 					r.method,
 					r.url,
-					r.headers,
-					r.queries,
-					r.body,
+					r.headers ?? null,
+					r.queries ?? null,
+					r.body ?? null,
 					r.auth ?? null,
 				],
 			);
 		}
+
+		await db.execute("COMMIT");
+	} catch (error) {
+		try {
+			await db.execute("ROLLBACK");
+		} catch {
+			// ignore rollback failure
+		}
+		throw error;
 	}
 };
