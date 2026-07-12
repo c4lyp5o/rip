@@ -1,13 +1,136 @@
 import Database from "@tauri-apps/plugin-sql";
+import { safeParseJson } from "./parser";
 
 let db = null;
+
+const normalizeHeaders = (raw) => {
+	const parsed = safeParseJson(raw, null);
+	// already an array
+	if (Array.isArray(parsed)) {
+		return parsed
+			.map((h) => {
+				if (h && typeof h === "object") {
+					return {
+						id: h.id ?? uuid(),
+						key: String(h.key ?? h.name ?? ""),
+						value: String(h.value ?? ""),
+						active: h.active === undefined ? true : Boolean(h.active),
+					};
+				}
+				return null;
+			})
+			.filter(Boolean);
+	}
+
+	if (parsed && typeof parsed === "object") {
+		return Object.keys(parsed).map((k) => ({
+			id: uuid(),
+			key: k,
+			value: String(parsed[k]),
+			active: true,
+		}));
+	}
+
+	if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+		return Object.keys(raw).map((k) => ({
+			id: uuid(),
+			key: k,
+			value: String(raw[k]),
+			active: true,
+		}));
+	}
+
+	return [];
+};
+
+const normalizeQueries = (raw) => {
+	const parsed = safeParseJson(raw, null);
+	if (Array.isArray(parsed)) {
+		return parsed.map((q) => ({
+			id: q?.id ?? uuid(),
+			key: String(q?.key ?? ""),
+			value: String(q?.value ?? ""),
+			active: q?.active === undefined ? true : Boolean(q.active),
+		}));
+	}
+
+	if (parsed && typeof parsed === "object") {
+		return Object.keys(parsed).map((k) => ({
+			id: uuid(),
+			key: k,
+			value: String(parsed[k]),
+			active: true,
+		}));
+	}
+
+	return [];
+};
+
+const migrateLegacyHeaderQueryFormats = async (database) => {
+	try {
+		// history table
+		const historyRows = await database.select(
+			"SELECT id, headers, queries FROM history",
+		);
+		for (const row of historyRows) {
+			const normalizedHeaders = normalizeHeaders(row.headers);
+			const normalizedQueries = normalizeQueries(row.queries);
+
+			const originalHeaders = safeParseJson(row.headers, null);
+			const originalQueries = safeParseJson(row.queries, null);
+
+			const needsHeaderUpdate = !Array.isArray(originalHeaders);
+			const needsQueryUpdate = !Array.isArray(originalQueries);
+
+			if (needsHeaderUpdate || needsQueryUpdate) {
+				await database.execute(
+					`UPDATE history SET headers = $1, queries = $2 WHERE id = $3`,
+					[
+						JSON.stringify(normalizedHeaders),
+						JSON.stringify(normalizedQueries),
+						row.id,
+					],
+				);
+			}
+		}
+
+		// requests table
+		const requestRows = await database.select(
+			"SELECT id, headers, queries FROM requests",
+		);
+		for (const row of requestRows) {
+			const normalizedHeaders = normalizeHeaders(row.headers);
+			const normalizedQueries = normalizeQueries(row.queries);
+
+			const originalHeaders = safeParseJson(row.headers, null);
+			const originalQueries = safeParseJson(row.queries, null);
+
+			const needsHeaderUpdate = !Array.isArray(originalHeaders);
+			const needsQueryUpdate = !Array.isArray(originalQueries);
+
+			if (needsHeaderUpdate || needsQueryUpdate) {
+				await database.execute(
+					`UPDATE requests SET headers = $1, queries = $2 WHERE id = $3`,
+					[
+						JSON.stringify(normalizedHeaders),
+						JSON.stringify(normalizedQueries),
+						row.id,
+					],
+				);
+			}
+		}
+	} catch (err) {
+		if (import.meta.env.DEV) console.error("Migration failed:", err);
+	}
+};
 
 export const initDb = async () => {
 	if (db) return db;
 
-	db = await Database.load("sqlite:history5.db");
+	db = await Database.load("sqlite:history6.db");
 
-	await db.execute("PRAGMA foreign_keys = ON");
+	await db.execute("PRAGMA foreign_keys = ON;");
+	await db.execute("PRAGMA journal_mode = WAL;");
 
 	await db.execute(`
     CREATE TABLE IF NOT EXISTS history (
@@ -23,18 +146,18 @@ export const initDb = async () => {
       queries TEXT,
       body TEXT,
       auth TEXT
-    )
+    );
   `);
 
 	await db.execute(`
-    -- 1. Top Level Collections
     CREATE TABLE IF NOT EXISTS collections (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       created_at TEXT
     );
+  `);
 
-    -- 2. Folders (Optional, linked to a collection)
+	await db.execute(`
     CREATE TABLE IF NOT EXISTS folders (
       id TEXT PRIMARY KEY,
       collection_id TEXT NOT NULL,
@@ -42,12 +165,13 @@ export const initDb = async () => {
       parent_id TEXT,
       FOREIGN KEY(collection_id) REFERENCES collections(id) ON DELETE CASCADE
     );
+  `);
 
-    -- 3. Saved Requests (Linked to either a Collection OR a Folder)
+	await db.execute(`
     CREATE TABLE IF NOT EXISTS requests (
       id TEXT PRIMARY KEY,
       collection_id TEXT NOT NULL,
-      folder_id TEXT, -- Can be NULL if request is at the root of the collection
+      folder_id TEXT,
       name TEXT NOT NULL,
       method TEXT NOT NULL,
       url TEXT NOT NULL,
@@ -58,7 +182,17 @@ export const initDb = async () => {
       FOREIGN KEY(collection_id) REFERENCES collections(id) ON DELETE CASCADE,
       FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE SET NULL
     );
-`);
+  `);
+
+	// indexes
+	await db.execute(
+		`CREATE INDEX IF NOT EXISTS idx_history_date ON history(date);`,
+	);
+	await db.execute(
+		`CREATE INDEX IF NOT EXISTS idx_history_url_method ON history(url, method);`,
+	);
+
+	await migrateLegacyHeaderQueryFormats(db);
 
 	return db;
 };
@@ -71,10 +205,11 @@ export const addToHistory = async (entry) => {
 		[entry.url, entry.method],
 	);
 
-	const newHeaders = JSON.stringify(entry.headers);
-	const newQueries = JSON.stringify(entry.queries);
-	const newBody = JSON.stringify(entry.body);
-	const newAuth = JSON.stringify(entry.auth || { type: "none" });
+	// normalize to arrays
+	const newHeaders = JSON.stringify(normalizeHeaders(entry.headers));
+	const newQueries = JSON.stringify(normalizeQueries(entry.queries));
+	const newBody = JSON.stringify(entry.body ?? "");
+	const newAuth = JSON.stringify(entry.auth ?? { type: "none" });
 
 	if (existingEntry.length > 0) {
 		const existing = existingEntry[0];
@@ -121,6 +256,7 @@ export const addToHistory = async (entry) => {
 		);
 	}
 
+	// keep only last 100 rows
 	await database.execute(
 		"DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY date DESC LIMIT 100)",
 	);
@@ -134,10 +270,10 @@ export const getHistoryItems = async () => {
 
 	return result.map((row) => ({
 		...row,
-		headers: row.headers ? JSON.parse(row.headers) : {},
-		queries: row.queries ? JSON.parse(row.queries) : [],
-		body: row.body ? JSON.parse(row.body) : "",
-		auth: row.auth ? JSON.parse(row.auth) : { type: "none" },
+		headers: normalizeHeaders(row.headers),
+		queries: normalizeQueries(row.queries),
+		body: safeParseJson(row.body, ""),
+		auth: safeParseJson(row.auth, { type: "none" }),
 	}));
 };
 
@@ -166,12 +302,26 @@ export const getCollectionsTree = async () => {
 				type: "folder",
 				items: requests
 					.filter((r) => r.folder_id === folder.id)
-					.map((r) => ({ ...r, type: "request" })),
+					.map((r) => ({
+						...r,
+						type: "request",
+						headers: normalizeHeaders(r.headers),
+						queries: normalizeQueries(r.queries),
+						body: safeParseJson(r.body, ""),
+						auth: safeParseJson(r.auth, { type: "none" }),
+					})),
 			}));
 
 		const rootRequests = requests
 			.filter((r) => r.collection_id === col.id && !r.folder_id)
-			.map((r) => ({ ...r, type: "request" }));
+			.map((r) => ({
+				...r,
+				type: "request",
+				headers: normalizeHeaders(r.headers),
+				queries: normalizeQueries(r.queries),
+				body: safeParseJson(r.body, ""),
+				auth: safeParseJson(r.auth, { type: "none" }),
+			}));
 
 		return {
 			...col,
@@ -241,6 +391,11 @@ export const saveRequest = async (collectionId, folderId, request) => {
 
 	const existing = await database.select(query, params);
 
+	const headersJson = JSON.stringify(normalizeHeaders(request.headers));
+	const queriesJson = JSON.stringify(normalizeQueries(request.queries));
+	const bodyJson = JSON.stringify(request.body ?? "");
+	const authJson = JSON.stringify(request.auth ?? { type: "none" });
+
 	if (existing.length > 0) {
 		const existingId = existing[0].id;
 		await database.execute(
@@ -248,18 +403,17 @@ export const saveRequest = async (collectionId, folderId, request) => {
 			[
 				request.method,
 				request.url,
-				JSON.stringify(request.headers),
-				JSON.stringify(request.queries),
-				JSON.stringify(request.body),
-				JSON.stringify(request.auth || { type: "none" }),
+				headersJson,
+				queriesJson,
+				bodyJson,
+				authJson,
 				existingId,
 			],
 		);
 		return existingId;
 	}
 
-	// 3. Insert new request if no name match was found
-	const id = crypto.randomUUID();
+	const id = uuid();
 	await database.execute(
 		`INSERT INTO requests (id, collection_id, folder_id, name, method, url, headers, queries, body, auth)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -270,10 +424,10 @@ export const saveRequest = async (collectionId, folderId, request) => {
 			requestName,
 			request.method,
 			request.url,
-			JSON.stringify(request.headers),
-			JSON.stringify(request.queries),
-			JSON.stringify(request.body),
-			JSON.stringify(request.auth || { type: "none" }),
+			headersJson,
+			queriesJson,
+			bodyJson,
+			authJson,
 		],
 	);
 	return id;
@@ -293,10 +447,10 @@ export const updateRequest = async (id, request) => {
 			request.name || request.url || "Untitled",
 			request.method,
 			request.url,
-			JSON.stringify(request.headers),
-			JSON.stringify(request.queries),
-			JSON.stringify(request.body),
-			JSON.stringify(request.auth || { type: "none" }),
+			JSON.stringify(normalizeHeaders(request.headers)),
+			JSON.stringify(normalizeQueries(request.queries)),
+			JSON.stringify(request.body ?? ""),
+			JSON.stringify(request.auth ?? { type: "none" }),
 			id,
 		],
 	);
@@ -314,126 +468,91 @@ export const exportData = async () => {
 export const importData = async (data) => {
 	const db = await initDb();
 
-	if (!data || typeof data !== "object") {
-		throw new Error("Invalid import data");
-	}
+	const bulkInsert = async (tableName, columns, items) => {
+		if (!items || items.length === 0) return;
 
-	const history = Array.isArray(data.history) ? data.history : [];
-	const collections = Array.isArray(data.collections) ? data.collections : [];
-	const folders = Array.isArray(data.folders) ? data.folders : [];
-	const requests = Array.isArray(data.requests) ? data.requests : [];
+		const chunkSize = 50;
 
-	const isObject = (value) => value && typeof value === "object";
+		for (let i = 0; i < items.length; i += chunkSize) {
+			const chunk = items.slice(i, i + chunkSize);
+			const values = [];
 
-	for (const h of history) {
-		if (
-			!isObject(h) ||
-			typeof h.id !== "number" ||
-			typeof h.method !== "string" ||
-			typeof h.url !== "string"
-		) {
-			throw new Error("Invalid history entry in import file");
+			const placeholders = chunk.map((_, rowIndex) => {
+				const rowParams = columns.map((_, colIndex) => {
+					return `$${rowIndex * columns.length + colIndex + 1}`;
+				});
+				return `(${rowParams.join(", ")})`;
+			});
+
+			chunk.forEach((item) => {
+				columns.forEach((col) => {
+					values.push(item[col] ?? null);
+				});
+			});
+
+			const query = `INSERT OR REPLACE INTO ${tableName} (${columns.join(", ")}) VALUES ${placeholders.join(", ")}`;
+			await db.execute(query, values);
 		}
-	}
-
-	for (const c of collections) {
-		if (
-			!isObject(c) ||
-			typeof c.id !== "string" ||
-			typeof c.name !== "string"
-		) {
-			throw new Error("Invalid collection entry in import file");
-		}
-	}
-
-	for (const f of folders) {
-		if (
-			!isObject(f) ||
-			typeof f.id !== "string" ||
-			typeof f.collection_id !== "string" ||
-			typeof f.name !== "string"
-		) {
-			throw new Error("Invalid folder entry in import file");
-		}
-	}
-
-	for (const r of requests) {
-		if (
-			!isObject(r) ||
-			typeof r.id !== "string" ||
-			typeof r.collection_id !== "string" ||
-			typeof r.name !== "string" ||
-			typeof r.method !== "string" ||
-			typeof r.url !== "string"
-		) {
-			throw new Error("Invalid request entry in import file");
-		}
-	}
+	};
 
 	try {
-		await db.execute("BEGIN");
-
-		for (const h of history) {
-			await db.execute(
-				`INSERT OR REPLACE INTO history (id, date, name, method, url, status, duration, size, headers, queries, body, auth) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		if (data.history) {
+			await bulkInsert(
+				"history",
 				[
-					h.id,
-					h.date ?? new Date().toISOString(),
-					h.name ?? null,
-					h.method,
-					h.url,
-					h.status ?? null,
-					h.duration ?? null,
-					h.size ?? null,
-					h.headers ?? null,
-					h.queries ?? null,
-					h.body ?? null,
-					h.auth ?? null,
+					"id",
+					"date",
+					"name",
+					"method",
+					"url",
+					"status",
+					"duration",
+					"size",
+					"headers",
+					"queries",
+					"body",
+					"auth",
 				],
+				data.history,
 			);
 		}
 
-		for (const c of collections) {
-			await db.execute(
-				`INSERT OR REPLACE INTO collections (id, name, created_at) VALUES ($1, $2, $3)`,
-				[c.id, c.name, c.created_at ?? new Date().toISOString()],
+		if (data.collections) {
+			await bulkInsert(
+				"collections",
+				["id", "name", "created_at"],
+				data.collections,
 			);
 		}
 
-		for (const f of folders) {
-			await db.execute(
-				`INSERT OR REPLACE INTO folders (id, collection_id, name, parent_id) VALUES ($1, $2, $3, $4)`,
-				[f.id, f.collection_id, f.name, f.parent_id ?? null],
+		if (data.folders) {
+			await bulkInsert(
+				"folders",
+				["id", "collection_id", "name", "parent_id"],
+				data.folders,
 			);
 		}
 
-		for (const r of requests) {
-			await db.execute(
-				`INSERT OR REPLACE INTO requests (id, collection_id, folder_id, name, method, url, headers, queries, body, auth) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		if (data.requests) {
+			await bulkInsert(
+				"requests",
 				[
-					r.id,
-					r.collection_id,
-					r.folder_id ?? null,
-					r.name,
-					r.method,
-					r.url,
-					r.headers ?? null,
-					r.queries ?? null,
-					r.body ?? null,
-					r.auth ?? null,
+					"id",
+					"collection_id",
+					"folder_id",
+					"name",
+					"method",
+					"url",
+					"headers",
+					"queries",
+					"body",
+					"auth",
 				],
+				data.requests,
 			);
 		}
-
-		await db.execute("COMMIT");
 	} catch (error) {
-		try {
-			await db.execute("ROLLBACK");
-		} catch {
-			// ignore rollback failure
-		}
+		if (import.meta.env.DEV) console.error("Import failed:", error);
 		throw error;
 	}
 };
