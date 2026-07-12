@@ -7,18 +7,17 @@ import {
 	useCallback,
 } from "react";
 import { executeRequest } from "../utils/requestHelper";
-import { parseUrlInput } from "../utils/urlParser";
+import { parseUrlInput, safeParseJson } from "../utils/parser";
 import {
 	initDb,
 	addToHistory,
 	getHistoryItems,
 	getCollectionsTree,
-} from "../utils/historyDb";
+} from "../utils/ripDb";
 
 const RipContext = createContext(null);
 
-const defaultWorkspaceTab = {
-	id: crypto.randomUUID(),
+const defaultWorkspaceTabTemplate = {
 	name: "New Request",
 	savedRequestId: null,
 	activeSubTab: "response",
@@ -26,20 +25,9 @@ const defaultWorkspaceTab = {
 	url: "",
 	queries: [],
 	headers: [
+		{ key: "Content-Type", value: "application/json", active: true },
+		{ key: "Accept", value: "application/json", active: true },
 		{
-			id: crypto.randomUUID(),
-			key: "Content-Type",
-			value: "application/json",
-			active: true,
-		},
-		{
-			id: crypto.randomUUID(),
-			key: "Accept",
-			value: "application/json",
-			active: true,
-		},
-		{
-			id: crypto.randomUUID(),
 			key: "User-Agent",
 			value: `RIP/1.0 (REST In Peace Client)`,
 			active: true,
@@ -53,28 +41,78 @@ const defaultWorkspaceTab = {
 	isFetching: false,
 };
 
+const createDefaultTab = (overrides = {}) => {
+	const id = crypto.randomUUID();
+	const headers = (defaultWorkspaceTabTemplate.headers || []).map((h) => ({
+		...h,
+		id: crypto.randomUUID(),
+	}));
+	const queries = (defaultWorkspaceTabTemplate.queries || []).map((q) => ({
+		...q,
+		id: crypto.randomUUID(),
+	}));
+	return {
+		id,
+		...defaultWorkspaceTabTemplate,
+		headers,
+		queries,
+		...overrides,
+	};
+};
+
 const ripReducerInitialState = {
 	methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-	workspaceTabs: [defaultWorkspaceTab],
-	activeWorkspaceTabId: defaultWorkspaceTab.id,
+	workspaceTabs: [createDefaultTab()],
+	activeWorkspaceTabId: null,
 	history: [],
 	collections: [],
 	networkDelay: 0,
 };
 
-const getActiveTab = (state) =>
-	state.workspaceTabs.find((tab) => tab.id === state.activeWorkspaceTabId);
+ripReducerInitialState.activeWorkspaceTabId =
+	ripReducerInitialState.workspaceTabs[0]?.id ?? null;
 
-const updateActiveTab = (state, updates) => ({
+const getActiveTab = (state) =>
+	state.workspaceTabs.find((t) => t.id === state.activeWorkspaceTabId);
+
+const updateTab = (state, updates, tabId = state.activeWorkspaceTabId) => ({
 	...state,
 	workspaceTabs: state.workspaceTabs.map((tab) =>
-		tab.id === state.activeWorkspaceTabId ? { ...tab, ...updates } : tab,
+		tab.id === tabId ? { ...tab, ...updates } : tab,
 	),
 });
 
+const normalizeHeaders = (raw) => {
+	const parsed = safeParseJson(raw, null);
+	if (Array.isArray(parsed)) {
+		return parsed.map((h) => ({
+			id: h?.id ?? crypto.randomUUID(),
+			key: String(h?.key ?? ""),
+			value: String(h?.value ?? ""),
+			active: h?.active === undefined ? true : Boolean(h.active),
+		}));
+	}
+	return createDefaultTab().headers;
+};
+
+const normalizeQueries = (raw) => {
+	const parsed = safeParseJson(raw, null);
+	if (Array.isArray(parsed)) {
+		return parsed.map((q) => ({
+			id: q?.id ?? crypto.randomUUID(),
+			key: String(q?.key ?? ""),
+			value: String(q?.value ?? ""),
+			active: q?.active === undefined ? true : Boolean(q.active),
+		}));
+	}
+	return [];
+};
+
 const syncUrlFromQueries = (url, queries) => {
-	const baseUrl = url.split("?")[0];
-	const activeQueries = queries.filter((q) => q.active && (q.key || q.value));
+	const baseUrl = (url || "").split("?")[0];
+	const activeQueries = (queries || []).filter(
+		(q) => q.active && (q.key || q.value),
+	);
 
 	if (activeQueries.length === 0) return baseUrl;
 
@@ -89,77 +127,56 @@ const ripReducer = (state, action) => {
 	switch (action.type) {
 		case "SET_SAVED_REQUEST_ID": {
 			const { tabId, savedRequestId } = action.payload;
-
-			return {
-				...state,
-				workspaceTabs: state.workspaceTabs.map((tab) =>
-					tab.id === tabId ? { ...tab, savedRequestId } : tab,
-				),
-			};
+			return updateTab(state, { savedRequestId }, tabId);
 		}
 		case "SET_TAB_NAME": {
 			const { id, name } = action.payload;
-			return {
-				...state,
-				workspaceTabs: state.workspaceTabs.map((tab) =>
-					tab.id === id ? { ...tab, name } : tab,
-				),
-			};
+			return updateTab(state, { name }, id);
 		}
 		case "SET_METHOD": {
-			return {
-				...state,
-				workspaceTabs: state.workspaceTabs.map((tab) => {
-					if (tab.id === state.activeWorkspaceTabId) {
-						const newActiveSubTab =
-							action.payload === "GET" && tab.activeSubTab === "body"
-								? "response"
-								: tab.activeSubTab;
-
-						return {
-							...tab,
-							method: action.payload,
-							activeSubTab: newActiveSubTab,
-						};
-					}
-					return tab;
-				}),
-			};
+			const method = action.payload;
+			const activeTab = getActiveTab(state);
+			if (!activeTab) return state;
+			const newActiveSubTab =
+				method === "GET" && activeTab.activeSubTab === "body"
+					? "response"
+					: activeTab.activeSubTab;
+			return updateTab(state, { method, activeSubTab: newActiveSubTab });
 		}
 		case "SET_URL": {
 			const newUrl = action.payload;
 			const tab = getActiveTab(state);
+			if (!tab) return state;
 
-			const currentQueryString = tab.url.split("?")[1] || "";
-			const newQueryString = newUrl.split("?")[1] || "";
+			const currentQueryString = (tab.url || "").split("?")[1] || "";
+			const newQueryString = (newUrl || "").split("?")[1] || "";
 
 			if (currentQueryString !== newQueryString) {
 				const { newQueries } = parseUrlInput(newUrl);
 				const inactiveQueries = (tab.queries || []).filter((q) => !q.active);
-				return updateActiveTab(state, {
+				return updateTab(state, {
 					url: newUrl,
-					queries: [...newQueries, ...inactiveQueries],
+					queries: [...(newQueries || []), ...inactiveQueries],
 				});
 			}
 
-			return updateActiveTab(state, { url: newUrl });
+			return updateTab(state, { url: newUrl });
 		}
 		case "SET_HEADERS": {
-			return updateActiveTab(state, { headers: action.payload });
+			return updateTab(state, { headers: action.payload });
 		}
 		case "ADD_QUERY": {
+			const activeTab = getActiveTab(state);
+			if (!activeTab) return state;
 			const newQuery = {
 				id: crypto.randomUUID(),
 				key: "",
 				value: "",
 				active: true,
 			};
-			const updatedQueries = [...(getActiveTab(state).queries || []), newQuery];
-			const newUrl = syncUrlFromQueries(
-				getActiveTab(state).url,
-				updatedQueries,
-			);
-			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
+			const updatedQueries = [...(activeTab.queries || []), newQuery];
+			const newUrl = syncUrlFromQueries(activeTab.url, updatedQueries);
+			return updateTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "DELETE_QUERY": {
 			const updatedQueries = (getActiveTab(state).queries || []).filter(
@@ -169,16 +186,17 @@ const ripReducer = (state, action) => {
 				getActiveTab(state).url,
 				updatedQueries,
 			);
-			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
+			return updateTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "UPDATE_QUERY": {
 			const { id, field, value } = action.payload;
 			const tab = getActiveTab(state);
+			if (!tab) return state;
 			const updatedQueries = (tab.queries || []).map((q) =>
 				q.id === id ? { ...q, [field]: value } : q,
 			);
 			const newUrl = syncUrlFromQueries(tab.url, updatedQueries);
-			return updateActiveTab(state, { queries: updatedQueries, url: newUrl });
+			return updateTab(state, { queries: updatedQueries, url: newUrl });
 		}
 		case "ADD_HEADER": {
 			const newHeader = {
@@ -187,39 +205,29 @@ const ripReducer = (state, action) => {
 				value: "",
 				active: true,
 			};
-
-			return updateActiveTab(state, {
+			return updateTab(state, {
 				headers: [...(getActiveTab(state).headers || []), newHeader],
 			});
 		}
 		case "DELETE_HEADER": {
 			const currentHeaders = getActiveTab(state).headers || [];
-			return updateActiveTab(state, {
+			return updateTab(state, {
 				headers: currentHeaders.filter((h) => h.id !== action.payload),
 			});
 		}
 		case "UPDATE_HEADER": {
 			const { id, field, value } = action.payload;
 			const currentHeaders = getActiveTab(state).headers || [];
-
 			const updatedHeaders = currentHeaders.map((h) =>
 				h.id === id ? { ...h, [field]: value } : h,
 			);
-
-			return updateActiveTab(state, { headers: updatedHeaders });
+			return updateTab(state, { headers: updatedHeaders });
 		}
 		case "SET_BODY_TYPE": {
-			return updateActiveTab(state, { bodyType: action.payload });
+			return updateTab(state, { bodyType: action.payload });
 		}
 		case "SET_BODY": {
-			return {
-				...state,
-				workspaceTabs: state.workspaceTabs.map((tab) =>
-					tab.id === state.activeWorkspaceTabId
-						? { ...tab, body: action.payload }
-						: tab,
-				),
-			};
+			return updateTab(state, { body: action.payload });
 		}
 		case "ADD_FORM_DATA": {
 			const newItem = {
@@ -230,7 +238,7 @@ const ripReducer = (state, action) => {
 				file: null,
 				active: true,
 			};
-			return updateActiveTab(state, {
+			return updateTab(state, {
 				formData: [...(getActiveTab(state).formData || []), newItem],
 			});
 		}
@@ -239,13 +247,13 @@ const ripReducer = (state, action) => {
 			const updated = (getActiveTab(state).formData || []).map((f) =>
 				f.id === id ? { ...f, [field]: value } : f,
 			);
-			return updateActiveTab(state, { formData: updated });
+			return updateTab(state, { formData: updated });
 		}
 		case "DELETE_FORM_DATA": {
 			const updated = (getActiveTab(state).formData || []).filter(
 				(f) => f.id !== action.payload,
 			);
-			return updateActiveTab(state, { formData: updated });
+			return updateTab(state, { formData: updated });
 		}
 		case "SET_AUTH": {
 			const currentAuth = getActiveTab(state).auth || {
@@ -254,13 +262,10 @@ const ripReducer = (state, action) => {
 				username: "",
 				password: "",
 			};
-			return updateActiveTab(state, {
-				auth: { ...currentAuth, ...action.payload },
-			});
+			return updateTab(state, { auth: { ...currentAuth, ...action.payload } });
 		}
 		case "SET_RESPONSE": {
 			const { tabId, response } = action.payload;
-
 			return {
 				...state,
 				workspaceTabs: state.workspaceTabs.map((tab) =>
@@ -278,7 +283,6 @@ const ripReducer = (state, action) => {
 		}
 		case "SET_FETCHING": {
 			const { tabId, isFetching } = action.payload;
-
 			return {
 				...state,
 				workspaceTabs: state.workspaceTabs.map((tab) =>
@@ -287,72 +291,46 @@ const ripReducer = (state, action) => {
 			};
 		}
 		case "ADD_WORKSPACE_TAB": {
-			const newWorkspaceTabs = [
-				...state.workspaceTabs,
-				{
-					id: crypto.randomUUID(),
-					name: defaultWorkspaceTab.name,
-					savedRequestId: null,
-					activeSubTab: defaultWorkspaceTab.activeSubTab,
-					method: defaultWorkspaceTab.method,
-					url: defaultWorkspaceTab.url,
-					queries: [...defaultWorkspaceTab.queries].map((q) => ({ ...q })),
-					headers: [...defaultWorkspaceTab.headers].map((h) => ({
-						...h,
-						id: crypto.randomUUID(),
-					})),
-					bodyType: defaultWorkspaceTab.bodyType,
-					body: defaultWorkspaceTab.body,
-					formData: defaultWorkspaceTab.formData,
-					auth: { ...defaultWorkspaceTab.auth },
-					response: defaultWorkspaceTab.response,
-					isFetching: defaultWorkspaceTab.isFetching,
-				},
-			];
+			const newTab = createDefaultTab();
 			return {
 				...state,
-				workspaceTabs: newWorkspaceTabs,
-				activeWorkspaceTabId: crypto.randomUUID(),
+				workspaceTabs: [...state.workspaceTabs, newTab],
+				activeWorkspaceTabId: newTab.id,
 			};
 		}
 		case "ADD_WORKSPACE_TAB_FROM_DB": {
 			const { id, data } = action.payload;
-			let restoredHeaders = defaultWorkspaceTab.headers.map((h) => ({
-				...h,
-				id: crypto.randomUUID(),
-			}));
-			if (data.headers && Array.isArray(data.headers)) {
-				restoredHeaders = data.headers.map((h) => ({
-					...h,
-					id: crypto.randomUUID(),
-				}));
-			}
+
+			const headers = normalizeHeaders(data.headers);
+			const queries = normalizeQueries(data.queries);
+			const body = data.body;
+			const auth = safeParseJson(data.auth, { type: "none" }) ?? {
+				type: "none",
+			};
 
 			const newTab = {
-				...defaultWorkspaceTab,
-				id: id,
-				name: data.name || data.url,
+				...createDefaultTab(),
+				id,
+				name: data.name || data.url || "Request",
 				savedRequestId: data.collection_id ? data.id : null,
 				activeSubTab: "response",
-				method: data.method,
-				url: data.url,
+				method: data.method || "GET",
+				url: data.url || "",
 				queries:
-					data.queries && data.queries.length > 0
-						? data.queries.map((q) => ({ ...q }))
-						: parseUrlInput(data.url).newQueries,
-				headers: restoredHeaders,
-				bodyType: data?.bodyType || "raw",
-				body: data.body || "",
-				formData: data?.formData ? data.formData.map((f) => ({ ...f })) : [],
-				auth:
-					data.auth && typeof data.auth === "object"
-						? { ...data.auth }
-						: data.auth && typeof data.auth === "string"
-							? JSON.parse(data.auth)
-							: { type: "none", token: "", username: "", password: "" },
+					queries.length > 0
+						? queries
+						: parseUrlInput(data.url || "").newQueries,
+				headers,
+				bodyType: data.bodyType || "raw",
+				body,
+				formData: Array.isArray(data.formData)
+					? data.formData.map((f) => ({ ...f }))
+					: [],
+				auth,
 				response: null,
 				isFetching: false,
 			};
+
 			return {
 				...state,
 				workspaceTabs: [...state.workspaceTabs, newTab],
@@ -363,14 +341,12 @@ const ripReducer = (state, action) => {
 			const newWorkspaceTabs = state.workspaceTabs.filter(
 				(tab) => tab.id !== action.payload,
 			);
-			if (import.meta.env.DEV) console.log(newWorkspaceTabs);
-			let newActiveTabId = null;
+			let newActiveTabId = state.activeWorkspaceTabId;
 			if (state.activeWorkspaceTabId === action.payload) {
-				if (newWorkspaceTabs.length > 0) {
-					newActiveTabId = newWorkspaceTabs[newWorkspaceTabs.length - 1].id;
-				}
-			} else {
-				newActiveTabId = state.activeWorkspaceTabId;
+				newActiveTabId =
+					newWorkspaceTabs.length > 0
+						? newWorkspaceTabs[newWorkspaceTabs.length - 1].id
+						: null;
 			}
 			return {
 				...state,
@@ -385,7 +361,7 @@ const ripReducer = (state, action) => {
 			return { ...state, activeWorkspaceTabId: action.payload };
 		}
 		case "SET_ACTIVE_SUB_TAB": {
-			return updateActiveTab(state, { activeSubTab: action.payload });
+			return updateTab(state, { activeSubTab: action.payload });
 		}
 		case "SET_HISTORY": {
 			return { ...state, history: action.payload };
