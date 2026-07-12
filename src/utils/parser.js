@@ -22,3 +22,13 @@ export const parseUrlInput = (input) => {
 
 	return { cleanUrl, newQueries };
 };
+
+export const safeParseJson = (value, fallback = null) => {
+	if (value === null || value === undefined) return fallback;
+	if (typeof value !== "string") return value;
+	try {
+		return JSON.parse(value);
+	} catch {
+		return fallback;
+	}
+};
