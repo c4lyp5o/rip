@@ -5,13 +5,12 @@ let db = null;
 
 const normalizeHeaders = (raw) => {
 	const parsed = safeParseJson(raw, null);
-	// already an array
 	if (Array.isArray(parsed)) {
 		return parsed
 			.map((h) => {
 				if (h && typeof h === "object") {
 					return {
-						id: h.id ?? uuid(),
+						id: h.id ?? crypto.randomUUID(),
 						key: String(h.key ?? h.name ?? ""),
 						value: String(h.value ?? ""),
 						active: h.active === undefined ? true : Boolean(h.active),
@@ -24,7 +23,7 @@ const normalizeHeaders = (raw) => {
 
 	if (parsed && typeof parsed === "object") {
 		return Object.keys(parsed).map((k) => ({
-			id: uuid(),
+			id: crypto.randomUUID(),
 			key: k,
 			value: String(parsed[k]),
 			active: true,
@@ -33,7 +32,7 @@ const normalizeHeaders = (raw) => {
 
 	if (raw && typeof raw === "object" && !Array.isArray(raw)) {
 		return Object.keys(raw).map((k) => ({
-			id: uuid(),
+			id: crypto.randomUUID(),
 			key: k,
 			value: String(raw[k]),
 			active: true,
@@ -47,7 +46,7 @@ const normalizeQueries = (raw) => {
 	const parsed = safeParseJson(raw, null);
 	if (Array.isArray(parsed)) {
 		return parsed.map((q) => ({
-			id: q?.id ?? uuid(),
+			id: q?.id ?? crypto.randomUUID(),
 			key: String(q?.key ?? ""),
 			value: String(q?.value ?? ""),
 			active: q?.active === undefined ? true : Boolean(q.active),
@@ -56,7 +55,7 @@ const normalizeQueries = (raw) => {
 
 	if (parsed && typeof parsed === "object") {
 		return Object.keys(parsed).map((k) => ({
-			id: uuid(),
+			id: crypto.randomUUID(),
 			key: k,
 			value: String(parsed[k]),
 			active: true,
@@ -184,6 +183,13 @@ export const initDb = async () => {
     );
   `);
 
+	await db.execute(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
 	// indexes
 	await db.execute(
 		`CREATE INDEX IF NOT EXISTS idx_history_date ON history(date);`,
@@ -285,6 +291,23 @@ export const deleteHistoryItem = async (id) => {
 export const clearHistory = async () => {
 	const database = await initDb();
 	await database.execute("DELETE FROM history");
+};
+
+export const getSetting = async (key) => {
+	const database = await initDb();
+	const rows = await database.select(
+		"SELECT value FROM settings WHERE key = $1",
+		[key],
+	);
+	return rows.length > 0 ? rows[0].value : null;
+};
+
+export const setSetting = async (key, value) => {
+	const database = await initDb();
+	await database.execute(
+		"INSERT OR REPLACE INTO settings (key, value) VALUES ($1, $2)",
+		[key, String(value)],
+	);
 };
 
 export const getCollectionsTree = async () => {
@@ -413,7 +436,7 @@ export const saveRequest = async (collectionId, folderId, request) => {
 		return existingId;
 	}
 
-	const id = uuid();
+	const id = crypto.randomUUID();
 	await database.execute(
 		`INSERT INTO requests (id, collection_id, folder_id, name, method, url, headers, queries, body, auth)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
