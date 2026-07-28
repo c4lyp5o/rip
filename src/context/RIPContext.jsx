@@ -13,6 +13,7 @@ import {
 	addToHistory,
 	getHistoryItems,
 	getCollectionsTree,
+	getSetting,
 } from "../utils/ripDb";
 
 const RipContext = createContext(null);
@@ -67,6 +68,8 @@ const ripReducerInitialState = {
 	history: [],
 	collections: [],
 	networkDelay: 0,
+	sidebarWidth: 224,
+	settingsLoaded: false,
 };
 
 ripReducerInitialState.activeWorkspaceTabId =
@@ -381,6 +384,12 @@ const ripReducer = (state, action) => {
 		case "SET_NETWORK_DELAY": {
 			return { ...state, networkDelay: action.payload };
 		}
+		case "SET_SIDEBAR_WIDTH": {
+			return { ...state, sidebarWidth: action.payload };
+		}
+		case "SET_SETTINGS_LOADED": {
+			return { ...state, settingsLoaded: action.payload };
+		}
 		default:
 			return state;
 	}
@@ -450,11 +459,45 @@ export const RipProvider = ({ children }) => {
 		[refreshHistory],
 	);
 
+	const sendRequest = useCallback(
+		(tabIdOverride = null) => {
+			const targetTabId = tabIdOverride || state.activeWorkspaceTabId;
+			const tab = state.workspaceTabs.find((t) => t.id === targetTabId);
+
+			if (!tab || tab.isFetching) return;
+
+			dispatch({ type: "SET_ACTIVE_SUB_TAB", payload: "response" });
+
+			if (fetcherRef.current) {
+				fetcherRef.current(tab, state.networkDelay);
+			}
+		},
+		[state.workspaceTabs, state.activeWorkspaceTabId, state.networkDelay],
+	);
+
 	useEffect(() => {
 		const init = async () => {
 			await initDb();
 			await refreshHistory();
 			await refreshCollections();
+
+			const savedSidebarWidth = await getSetting("sidebarWidth");
+			if (savedSidebarWidth !== null) {
+				dispatch({
+					type: "SET_SIDEBAR_WIDTH",
+					payload: Number(savedSidebarWidth),
+				});
+			}
+
+			const savedNetworkDelay = await getSetting("networkDelay");
+			if (savedNetworkDelay !== null) {
+				dispatch({
+					type: "SET_NETWORK_DELAY",
+					payload: Number(savedNetworkDelay),
+				});
+			}
+
+			dispatch({ type: "SET_SETTINGS_LOADED", payload: true });
 		};
 		init();
 	}, [refreshHistory, refreshCollections]);
@@ -471,6 +514,7 @@ export const RipProvider = ({ children }) => {
 				fetcherRef,
 				refreshHistory,
 				refreshCollections,
+				sendRequest,
 			}}
 		>
 			{children}
