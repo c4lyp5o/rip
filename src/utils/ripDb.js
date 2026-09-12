@@ -1,69 +1,8 @@
 import Database from "@tauri-apps/plugin-sql";
 import { safeParseJson } from "./parser";
+import { normalizeHeaders, normalizeQueries } from "./requestNormalization";
 
 let db = null;
-
-const normalizeHeaders = (raw) => {
-	const parsed = safeParseJson(raw, null);
-	if (Array.isArray(parsed)) {
-		return parsed
-			.map((h) => {
-				if (h && typeof h === "object") {
-					return {
-						id: h.id ?? crypto.randomUUID(),
-						key: String(h.key ?? h.name ?? ""),
-						value: String(h.value ?? ""),
-						active: h.active === undefined ? true : Boolean(h.active),
-					};
-				}
-				return null;
-			})
-			.filter(Boolean);
-	}
-
-	if (parsed && typeof parsed === "object") {
-		return Object.keys(parsed).map((k) => ({
-			id: crypto.randomUUID(),
-			key: k,
-			value: String(parsed[k]),
-			active: true,
-		}));
-	}
-
-	if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-		return Object.keys(raw).map((k) => ({
-			id: crypto.randomUUID(),
-			key: k,
-			value: String(raw[k]),
-			active: true,
-		}));
-	}
-
-	return [];
-};
-
-const normalizeQueries = (raw) => {
-	const parsed = safeParseJson(raw, null);
-	if (Array.isArray(parsed)) {
-		return parsed.map((q) => ({
-			id: q?.id ?? crypto.randomUUID(),
-			key: String(q?.key ?? ""),
-			value: String(q?.value ?? ""),
-			active: q?.active === undefined ? true : Boolean(q.active),
-		}));
-	}
-
-	if (parsed && typeof parsed === "object") {
-		return Object.keys(parsed).map((k) => ({
-			id: crypto.randomUUID(),
-			key: k,
-			value: String(parsed[k]),
-			active: true,
-		}));
-	}
-
-	return [];
-};
 
 const migrateLegacyHeaderQueryFormats = async (database) => {
 	try {
