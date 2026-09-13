@@ -35,7 +35,7 @@ const WorkspacePanel = ({
 						strokeWidth="1"
 						className="text-stone-100"
 					>
-						<title>No Open Tabs</title>
+						<title>Workspace empty</title>
 						<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
 						<line x1="8" y1="21" x2="16" y2="21" />
 						<line x1="12" y1="17" x2="12" y2="21" />
@@ -67,10 +67,21 @@ const WorkspacePanel = ({
 					}}
 				>
 					{workspaceTabs.map((tab) => (
-						<button
-							type="button"
+						<div
 							key={tab.id}
 							className="shrink-0"
+							role="button"
+							tabIndex={0}
+							aria-pressed={activeWorkspaceTabId === tab.id}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									dispatch({
+										type: "SET_ACTIVE_WORKSPACE_TAB",
+										payload: tab.id,
+									})
+								}
+							}}
 							onClick={() =>
 								dispatch({
 									type: "SET_ACTIVE_WORKSPACE_TAB",
@@ -86,7 +97,7 @@ const WorkspacePanel = ({
 								onClose={() => handleDeleteTab(tab.id)}
 								onRename={handleRenameTab}
 							/>
-						</button>
+						</div>
 					))}
 				</div>
 

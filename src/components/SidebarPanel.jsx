@@ -7,7 +7,7 @@ const SidebarPanel = ({
 	sidebarWidth,
 	activeSpace,
 	setActiveSpace,
-history,
+	history,
 	collections,
 	handleLoadHistoryItemById,
 	handleLoadRequest,
@@ -25,6 +25,8 @@ history,
 		<div
 			onMouseDown={() => setIsDraggingSidebar(true)}
 			className="absolute top-0 -right-1.5 w-3 h-full cursor-col-resize z-50 group flex justify-center"
+			role="img"
+			aria-label="Resize sidebar"
 		>
 			<div
 				className={`w-0.5 h-full transition-colors ${
@@ -56,26 +58,26 @@ history,
 					{activeSpace === "history" ? "Recent Requests" : "Collections"}
 				</div>
 				{activeSpace === "history" && (
-					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar">
-						{history.length === 0 && (
-							<div className="px-3 py-4 text-xs text-stone-600 text-center italic">
-								No history yet
-							</div>
-						)}
+					<div className="flex justify-end px-2 mb-1">
+						<button
+							type="button"
+							onClick={confirmClearHistory}
+							className="flex items-center gap-1 text-[10px] text-stone-500 hover:text-red-400 transition-colors"
+						>
+							<Trash2 className="w-3 h-3" />
+							<span>Clear All</span>
+						</button>
+					</div>
+				)}
 
-						{history.length > 0 && (
-							<div className="flex justify-end px-2 mb-1">
-								<button
-									type="button"
-									onClick={confirmClearHistory}
-									className="flex items-center gap-1 text-[10px] text-stone-500 hover:text-red-400 transition-colors"
-								>
-									<Trash2 className="w-3 h-3" />
-									<span>Clear All</span>
-								</button>
-							</div>
-						)}
+				{history.length === 0 && (
+					<div className="px-3 py-4 text-xs text-stone-600 text-center italic">
+						No history yet
+					</div>
+				)}
 
+				{history.length > 0 && (
+					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto">
 						{history.map((item) => (
 							<HistoryItem
 								key={item.id}
@@ -88,7 +90,7 @@ history,
 				)}
 
 				{activeSpace === "collections" && (
-					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar">
+					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto">
 						<button
 							type="button"
 							onClick={() => setIsCreateModalOpen(true)}
@@ -123,6 +125,7 @@ history,
 				type="button"
 				onClick={() => setIsSettingsModalOpen(true)}
 				className="p-1.5 hover:bg-stone-800 rounded"
+				aria-label="Settings"
 			>
 				<Settings className="w-3.5 h-3.5" />
 			</button>

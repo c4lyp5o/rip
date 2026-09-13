@@ -38,7 +38,7 @@ const TreeItem = memo(
 						type="button"
 						onClick={(e) => onDeleteRequest(item)}
 						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
-						title="Delete Request"
+						aria-label="Delete Request"
 					>
 						<Trash2 className="w-3 h-3" />
 					</button>
@@ -75,7 +75,7 @@ const TreeItem = memo(
 							onDeleteCollection(item);
 						}}
 						className="opacity-0 group-hover:opacity-100 p-1 text-stone-500 hover:text-red-400 rounded transition-all"
-						title="Delete Collection"
+						aria-label="Delete collection"
 					>
 						<Trash2 className="w-3 h-3" />
 					</button>

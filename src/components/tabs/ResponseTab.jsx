@@ -179,7 +179,7 @@ const ResponseTab = () => {
 						{activeWorkspace.response?.type === "error" && (
 							<ErrorDisplay
 								error={activeWorkspace.response.content}
-								onRetry={sendRequest()}
+								onRetry={sendRequest}
 							/>
 						)}
 					</>

@@ -47,7 +47,7 @@ const HistoryItem = memo(({ item, onLoadRequest, onDeleteRequest }) => (
 			type="button"
 			onClick={() => onDeleteRequest(item)}
 			className="hidden group-hover:block p-1 text-stone-500 hover:text-red-400 rounded transition-all shrink-0"
-			title="Delete from history"
+			aria-label="Delete from history"
 		>
 			<Trash2 className="w-3 h-3" />
 		</button>

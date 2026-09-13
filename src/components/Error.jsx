@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useRip } from "../context/RIPContext";
 import { useToast } from "../context/ToastContext";
 
-const ErrorDisplay = ({ error }) => {
+const ErrorDisplay = ({ error, onRetry }) => {
 	const { sendRequest } = useRip();
+	const handleRetry = onRetry || sendRequest;
 	const { showToast } = useToast();
 
 	const [copied, setCopied] = useState(false);
@@ -62,7 +63,7 @@ const ErrorDisplay = ({ error }) => {
 
 			<button
 				type="button"
-				onClick={sendRequest}
+				onClick={handleRetry}
 				className="flex items-center gap-2 bg-stone-800 hover:bg-stone-700 text-stone-200 px-5 py-2 rounded-md text-sm font-medium transition-all border border-stone-700 active:scale-95"
 			>
 				<RefreshCw className="w-4 h-4" />

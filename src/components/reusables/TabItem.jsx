@@ -79,6 +79,7 @@ const TabItem = ({ id, method, name, active, onClose, onRename }) => {
 					onClose();
 				}}
 				className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-stone-700 rounded shrink-0"
+				aria-label="Close tab"
 			>
 				<X className="w-3 h-3" />
 			</button>
