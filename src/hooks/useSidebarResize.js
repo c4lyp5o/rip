@@ -52,7 +52,7 @@ const useSidebarResize = (sidebarWidth, dispatch) => {
 		};
 	}, [isDraggingSidebar, dispatch, showToast]);
 
-	return { isDraggingSidebar, setIsDraggingSidebar, sidebarWidthRef };
+	return { isDraggingSidebar, setIsDraggingSidebar };
 };
 
 export default useSidebarResize;

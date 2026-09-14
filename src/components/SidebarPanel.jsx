@@ -25,7 +25,8 @@ const SidebarPanel = ({
 		<div
 			onMouseDown={() => setIsDraggingSidebar(true)}
 			className="absolute top-0 -right-1.5 w-3 h-full cursor-col-resize z-50 group flex justify-center"
-			role="img"
+			role="separator"
+			aria-orientation="vertical"
 			aria-label="Resize sidebar"
 		>
 			<div
@@ -57,7 +58,7 @@ const SidebarPanel = ({
 				<div className="text-xs font-semibold text-stone-500 px-3 uppercase tracking-wider mb-2">
 					{activeSpace === "history" ? "Recent Requests" : "Collections"}
 				</div>
-				{activeSpace === "history" && (
+				{activeSpace === "history" && history.length > 0 && (
 					<div className="flex justify-end px-2 mb-1">
 						<button
 							type="button"
@@ -77,7 +78,7 @@ const SidebarPanel = ({
 				)}
 
 				{history.length > 0 && (
-					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto">
+					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar">
 						{history.map((item) => (
 							<HistoryItem
 								key={item.id}
@@ -90,7 +91,7 @@ const SidebarPanel = ({
 				)}
 
 				{activeSpace === "collections" && (
-					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto">
+					<div className="flex flex-col gap-1 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar">
 						<button
 							type="button"
 							onClick={() => setIsCreateModalOpen(true)}

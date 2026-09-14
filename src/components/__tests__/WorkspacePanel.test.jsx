@@ -125,5 +125,3 @@ describe("WorkspacePanel", () => {
 		expect(screen.queryByText(/network throttling/i)).not.toBeInTheDocument();
 	});
 });
-
-export default WorkspacePanel;

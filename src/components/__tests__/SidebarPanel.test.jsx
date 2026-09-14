@@ -44,6 +44,14 @@ describe("SidebarPanel", () => {
 		expect(screen.getByText("No history yet")).toBeInTheDocument();
 	});
 
+	it("hides the Clear All button when history is empty", () => {
+		renderPanel();
+
+		expect(
+			screen.queryByRole("button", { name: "Clear All" }),
+		).not.toBeInTheDocument();
+	});
+
 	it("shows a Clear All button when history has items", () => {
 		renderPanel({
 			history: [{ id: "1", method: "GET", url: "https://api.test.com" }],
@@ -86,8 +94,6 @@ describe("SidebarPanel", () => {
 	it("renders a drag handle for resizing", () => {
 		renderPanel();
 
-		expect(screen.getByRole("img", { name: /resize/i })).toBeInTheDocument();
+		expect(screen.getByRole("separator", { name: /resize/i })).toBeInTheDocument();
 	});
 });
-
-export default SidebarPanel;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRip } from "./context/RIPContext";
 import { useToast } from "./context/ToastContext";
 import {
@@ -8,7 +8,6 @@ import {
 	deleteCollection,
 	deleteRequest,
 	updateRequest,
-	setSetting,
 } from "./utils/ripDb";
 import { isSameRequest } from "./utils/requestNormalization";
 import {
@@ -16,24 +15,12 @@ import {
 	Code2,
 	Key,
 	Package,
-	Plus,
 	Terminal,
-	Zap,
 } from "lucide-react";
 import "./App.css";
 
-import SidebarItem from "./components/reusables/SidebarItem";
-import HistoryItem from "./components/reusables/HistoryItem";
-import TreeItem from "./components/reusables/TreeItem";
-import TabItem from "./components/reusables/TabItem";
-import URLMethodBar from "./components/URLMethodBar";
 import SidebarPanel from "./components/SidebarPanel";
 import WorkspacePanel from "./components/WorkspacePanel";
-import AuthTab from "./components/tabs/AuthTab";
-import HeadersTab from "./components/tabs/HeadersTab";
-import QueriesTab from "./components/tabs/QueriesTab";
-import BodyTab from "./components/tabs/BodyTab";
-import ResponseTab from "./components/tabs/ResponseTab";
 import ConfirmDeletionModal from "./components/modals/ConfirmDeletionModal";
 import CreateCollectionModal from "./components/modals/CreateCollectionModal";
 import SettingsModal from "./components/modals/SettingsModal";
@@ -294,10 +281,6 @@ function App() {
 		dispatch,
 	});
 
-	useEffect(() => {
-		sidebarWidthRef.current = sidebarWidth;
-	}, [sidebarWidth]);
-
 	return (
 		<div className="flex h-screen w-full bg-stone-950 text-stone-100 font-sans overflow-hidden">
 			{/* 1. SIDEBAR */}
@@ -340,127 +323,7 @@ function App() {
 				dispatch={dispatch}
 			/>
 
-				{/* Workspace Content */}
-				{activeWorkspace ? (
-					<div className="flex-1 p-3 md:p-4 flex flex-col min-h-0">
-						<div className="w-full h-full flex flex-col space-y-3">
-							{/* URL & Method Bar */}
-							<URLMethodBar
-								showSaveMenu={showSaveMenu}
-								setShowSaveMenu={setShowSaveMenu}
-								showCodeMenu={showCodeMenu}
-								setShowCodeMenu={setShowCodeMenu}
-								setIsCreateModalOpen={setIsCreateModalOpen}
-							/>
-
-							{/* Tabs */}
-							<div className="bg-stone-800 rounded-lg border border-stone-700 shadow-sm flex flex-col flex-1 min-h-0">
-								{/* All Tabs */}
-								<div className="flex items-center border-b border-stone-700 px-1 select-none">
-									{visibleTabs.map((tab) => {
-										const isActive = activeWorkspace.activeSubTab === tab.id;
-
-										return (
-											<button
-												key={tab.id}
-												type="button"
-												onClick={() =>
-													dispatch({
-														type: "SET_ACTIVE_SUB_TAB",
-														payload: tab.id,
-													})
-												}
-												className={`
-                            relative top-px flex items-center gap-1.5 px-3 py-2 text-[10px] font-medium uppercase tracking-wide transition-all border-b-2                           ${
-													isActive
-														? "border-emerald-500 text-emerald-400 bg-stone-800/50"
-														: "border-transparent text-stone-500 hover:text-stone-300 hover:bg-stone-800/30"
-												}
-                        `}
-											>
-												<tab.icon
-													className={`w-3 h-3 ${isActive ? "text-emerald-500" : "text-stone-500"}`}
-												/>
-												{tab.label}
-											</button>
-										);
-									})}
-
-									{state.networkDelay > 0 && (
-										<div
-											className="ml-auto flex items-center px-3 cursor-help opacity-70 hover:opacity-100 transition-opacity"
-											title={`Network Throttling Active: ${state.networkDelay}ms`}
-										>
-											<div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-												<Zap className="w-3 h-3 text-amber-500 animate-pulse" />
-												<span className="text-[9px] font-mono text-amber-500/80 font-semibold tracking-wider">
-													{state.networkDelay}MS
-												</span>
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* Tab Content Area */}
-								<div className="flex-1 p-0 overflow-hidden relative flex flex-col">
-									{/* AUTH TAB */}
-									{activeWorkspace.activeSubTab === "auth" && <AuthTab />}
-
-									{/* HEADERS TAB */}
-									{activeWorkspace.activeSubTab === "headers" && <HeadersTab />}
-
-									{/* QUERIES TAB */}
-									{activeWorkspace.activeSubTab === "queries" && <QueriesTab />}
-
-									{/* BODY TAB */}
-									{activeWorkspace.activeSubTab === "body" && <BodyTab />}
-
-									{/* RESPONSE TAB */}
-									{activeWorkspace.activeSubTab === "response" && (
-										<ResponseTab />
-									)}
-								</div>
-							</div>
-						</div>
-					</div>
-				) : (
-					<div className="flex-1 flex flex-col items-center justify-center h-full p-6 text-center">
-						<div className="mb-6 opacity-20">
-							<svg
-								width="120"
-								height="120"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="1"
-								className="text-stone-100"
-							>
-								<title>No Open Tabs</title>
-								<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-								<line x1="8" y1="21" x2="16" y2="21" />
-								<line x1="12" y1="17" x2="12" y2="21" />
-							</svg>
-						</div>
-
-						<h2 className="text-lg font-semibold text-stone-200 mb-1">
-							No Open Tabs
-						</h2>
-						<p className="text-stone-500 text-xs mb-6">
-							Your workspace is empty.
-						</p>
-
-						<button
-							type="button"
-							onClick={() => dispatch({ type: "ADD_WORKSPACE_TAB" })}
-							className="group flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
-						>
-							<Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-							<span>Create New Request</span>
-						</button>
-					</div>
-				)}
-
-			{/* 3. MODALS */}
+				{/* 3. MODALS */}
 			{/* Confirm Dialog Modal */}
 			{confirmDeletionModal.isOpen && (
 				<ConfirmDeletionModal
