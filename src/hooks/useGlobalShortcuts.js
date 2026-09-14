@@ -20,12 +20,11 @@ const useGlobalShortcuts = ({
 	useEffect(() => {
 		const handleGlobalKeyDown = (e) => {
 			const target = e.target;
-			if (isEditableElement(target)) {
-				return;
-			}
-
 			const isModifier = e.ctrlKey || e.metaKey;
 
+			// Save and Send are REQUEST actions: they must fire even while the
+			// user is typing in a field. "edit a header, press Ctrl+S" is the
+			// primary save flow — an input must never swallow it.
 			if (isModifier && e.key.toLowerCase() === "s") {
 				e.preventDefault();
 				if (!activeWorkspace) return;
@@ -34,6 +33,21 @@ const useGlobalShortcuts = ({
 				} else {
 					setShowSaveMenu(true);
 				}
+				return;
+			}
+
+			if (isModifier && e.key === "Enter") {
+				e.preventDefault();
+				if (!isFetching && activeWorkspace?.url) {
+					sendRequest();
+				}
+				return;
+			}
+
+			// Window/tab management from inside a text field is never intended:
+			// keep the guard for those.
+			if (isEditableElement(target)) {
+				return;
 			}
 
 			if (isModifier && e.key.toLowerCase() === "w") {
@@ -46,13 +60,6 @@ const useGlobalShortcuts = ({
 			if (isModifier && e.key.toLowerCase() === "t") {
 				e.preventDefault();
 				dispatch({ type: "ADD_WORKSPACE_TAB" });
-			}
-
-			if (isModifier && e.key === "Enter") {
-				e.preventDefault();
-				if (!isFetching && activeWorkspace?.url) {
-					sendRequest();
-				}
 			}
 		};
 

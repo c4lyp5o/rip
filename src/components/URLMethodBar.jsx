@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useRip } from "../context/RIPContext";
 import { useToast } from "../context/ToastContext";
-import { saveRequest } from "../utils/ripDb";
+import { saveRequest, updateRequest } from "../utils/ripDb";
 import CompactSelect from "./reusables/CompactSelect";
 
 const URLMethodBar = ({
