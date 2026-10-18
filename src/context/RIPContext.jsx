@@ -15,8 +15,11 @@ import {
 	getCollectionsTree,
 	getSetting,
 } from "../utils/ripDb";
+import { normalizeHeaders, normalizeQueries } from "../utils/requestNormalization";
 
 const RipContext = createContext(null);
+const RipStateContext = createContext(null);
+const RipActionsContext = createContext(null);
 
 const defaultWorkspaceTabTemplate = {
 	name: "New Request",
@@ -84,32 +87,6 @@ const updateTab = (state, updates, tabId = state.activeWorkspaceTabId) => ({
 		tab.id === tabId ? { ...tab, ...updates } : tab,
 	),
 });
-
-const normalizeHeaders = (raw) => {
-	const parsed = safeParseJson(raw, null);
-	if (Array.isArray(parsed)) {
-		return parsed.map((h) => ({
-			id: h?.id ?? crypto.randomUUID(),
-			key: String(h?.key ?? ""),
-			value: String(h?.value ?? ""),
-			active: h?.active === undefined ? true : Boolean(h.active),
-		}));
-	}
-	return createDefaultTab().headers;
-};
-
-const normalizeQueries = (raw) => {
-	const parsed = safeParseJson(raw, null);
-	if (Array.isArray(parsed)) {
-		return parsed.map((q) => ({
-			id: q?.id ?? crypto.randomUUID(),
-			key: String(q?.key ?? ""),
-			value: String(q?.value ?? ""),
-			active: q?.active === undefined ? true : Boolean(q.active),
-		}));
-	}
-	return [];
-};
 
 const syncUrlFromQueries = (url, queries) => {
 	const baseUrl = (url || "").split("?")[0];
@@ -399,6 +376,7 @@ export const RipProvider = ({ children }) => {
 	const [state, dispatch] = useReducer(ripReducer, ripReducerInitialState);
 
 	const fetcherRef = useRef();
+	const abortControllerRef = useRef(null);
 
 	const refreshHistory = useCallback(async () => {
 		const history = await getHistoryItems();
@@ -425,8 +403,11 @@ export const RipProvider = ({ children }) => {
 
 			let response = null;
 
+			const controller = new AbortController();
+			abortControllerRef.current = controller;
+
 			try {
-				response = await executeRequest(currentTab);
+				response = await executeRequest(currentTab, controller.signal);
 
 				if (!currentTab.savedRequestId) {
 					await addToHistory({
@@ -446,8 +427,12 @@ export const RipProvider = ({ children }) => {
 				}
 			} catch (error) {
 				if (import.meta.env.DEV) console.error("Request failed:", error);
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
+								const errorMessage =
+									error?.name === "AbortError"
+										? "Request cancelled"
+										: error instanceof Error
+										? error.message
+										: String(error);
 				response = { type: "error", content: errorMessage };
 			} finally {
 				dispatch({
@@ -474,6 +459,10 @@ export const RipProvider = ({ children }) => {
 		},
 		[state.workspaceTabs, state.activeWorkspaceTabId, state.networkDelay],
 	);
+
+	const cancelRequest = useCallback(() => {
+		abortControllerRef.current?.abort();
+	}, []);
 
 	useEffect(() => {
 		const init = async () => {
@@ -506,19 +495,25 @@ export const RipProvider = ({ children }) => {
 		fetcherRef.current = handleRequest;
 	}, [handleRequest]);
 
+	const actionsValue = {
+		dispatch,
+		fetcherRef,
+		refreshHistory,
+		refreshCollections,
+		sendRequest,
+		cancelRequest,
+	};
+
 	return (
-		<RipContext.Provider
-			value={{
-				state,
-				dispatch,
-				fetcherRef,
-				refreshHistory,
-				refreshCollections,
-				sendRequest,
-			}}
-		>
-			{children}
-		</RipContext.Provider>
+		<RipStateContext.Provider value={state}>
+			<RipActionsContext.Provider value={actionsValue}>
+				<RipContext.Provider
+					value={{ state, ...actionsValue }}
+				>
+					{children}
+				</RipContext.Provider>
+			</RipActionsContext.Provider>
+		</RipStateContext.Provider>
 	);
 };
 
@@ -528,4 +523,29 @@ export const useRip = () => {
 		throw new Error("useRip must be used within RipProvider");
 	}
 	return context;
+};
+
+// Granular hooks: components that only need part of the context can subscribe
+// to a narrower slice and avoid re-rendering on unrelated state changes.
+export const useRipState = () => {
+	const state = useContext(RipStateContext);
+	const actions = useContext(RipActionsContext);
+	if (state === null && !actions) {
+		throw new Error("useRipState must be used within RipProvider");
+	}
+	return state;
+};
+
+export const useRipDispatch = () => {
+	const context = useContext(RipActionsContext);
+	if (!context) throw new Error("useRipDispatch must be used within RipProvider");
+	return context.dispatch;
+};
+
+export const useRipActions = () => {
+	const context = useContext(RipActionsContext);
+	if (!context) throw new Error("useRipActions must be used within RipProvider");
+	const { fetcherRef, refreshHistory, refreshCollections, sendRequest, cancelRequest } =
+		context;
+	return { fetcherRef, refreshHistory, refreshCollections, sendRequest, cancelRequest };
 };

@@ -9,15 +9,16 @@ const formatSize = (bytes) => {
 		: `${sizeNum} B`;
 };
 
-export const executeRequest = async ({
-	method,
-	url,
-	headers,
-	bodyType,
-	body,
-	formData,
-	auth,
-}) => {
+export const executeRequest = async (tab, signal) => {
+	const {
+		method,
+		url,
+		headers,
+		bodyType,
+		body,
+		formData,
+		auth,
+	} = tab;
 	if (!url) throw new Error("URL is required to make a request.");
 
 	const normalizedUrl = normalizeUrlInput(url);
@@ -49,6 +50,7 @@ export const executeRequest = async ({
 	const options = {
 		method,
 		headers: requestHeaders,
+		signal,
 	};
 
 	if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && body) {
@@ -71,7 +73,7 @@ export const executeRequest = async ({
 				options.body = fd;
 				options.headers.delete("Content-Type");
 			}
-		} else if (body) {
+		} else {
 			options.body = typeof body === "object" ? JSON.stringify(body) : body;
 		}
 	}
