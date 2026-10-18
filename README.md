@@ -1,5 +1,7 @@
 # RIP — REST In Peace 🕊️
 
+**Version:** 1.0.0 · **License:** MIT · **Platform:** Windows / macOS / Linux
+
 A desktop HTTP/REST API client for sending requests, inspecting responses, and
 persisting your history and collections locally. Think Postman / Insomnia,
 packaged as a native app with [Tauri](https://tauri.app).
@@ -111,6 +113,37 @@ src-tauri/              Rust backend, Tauri config, capabilities
 Requests, history, collections, and settings are stored in a local SQLite
 database (`plugin-sql`). On first launch the app migrates any legacy header/query
 formats into the current normalized shape.
+
+
+
+---
+
+## Contributing
+
+1. Fork the repo and create a feature branch.
+2. Install deps: `bun install`
+3. Run tests: `bun run test:run` (must pass)
+4. Build: `bun run build` (must succeed)
+5. Keep changes small and focused; add tests for new logic.
+6. Open a PR against `main`.
+
+Code style: patch only, never commit secrets. See `.gitignore` for build artifacts.
+
+---
+
+## Changelog
+
+### 1.0.0
+- Initial release.
+- HTTP/REST request builder with auth (none/bearer/basic), headers, queries, body (raw/form-data).
+- Rich responses: pretty JSON with search, binary blob preview + download, clean error + retry.
+- Local history + collections (folders) + workspaces (tabs), persisted in SQLite.
+- Network delay injection, export/import JSON backup.
+- Keyboard shortcuts: Ctrl/Cmd+S save, W close tab, T new tab, Enter send.
+- Theming: 7 built-in themes + custom theme import/export.
+- CI: tests + build on push/PR; release workflow builds Windows/macOS/Linux installers on `v*` tags.
+
+---
 
 
 ---
