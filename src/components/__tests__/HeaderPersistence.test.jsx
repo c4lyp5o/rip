@@ -59,7 +59,8 @@ import { ToastProvider } from "../../context/ToastContext";
 
 const openSavedRequest = async () => {
 	// switch the sidebar to the Collections space
-	fireEvent.click(screen.getByText("Collections"));
+	const collectionsBtn = await screen.findByText("Collections", {}, { timeout: 3000 });
+	fireEvent.click(collectionsBtn);
 	// wait for the collection to load, expand it, click the request
 	const col = await screen.findByText("Test API", {}, { timeout: 3000 });
 	fireEvent.click(col);

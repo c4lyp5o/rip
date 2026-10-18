@@ -39,7 +39,7 @@ import { ToastProvider } from "../../context/ToastContext";
 //     inlined copy and WorkspacePanel's: two URL inputs, two Send buttons).
 // This suite mounts the real root; the leaf-only suites cannot see either bug.
 describe("App (root mount)", () => {
-	it("mounts and renders the sidebar navigation", () => {
+	it("mounts and renders the sidebar navigation", async () => {
 		render(
 			<RipProvider>
 				<ToastProvider placement="bottom-right">
@@ -48,8 +48,8 @@ describe("App (root mount)", () => {
 			</RipProvider>,
 		);
 
-		expect(screen.getByText("History")).toBeInTheDocument();
-		expect(screen.getByText("Collections")).toBeInTheDocument();
+		expect(await screen.findByText("History")).toBeInTheDocument();
+		expect(await screen.findByText("Collections")).toBeInTheDocument();
 	});
 
 	it("boots with a default tab and renders the request UI exactly once", async () => {
