@@ -137,7 +137,18 @@ export const initDb = async () => {
 		`CREATE INDEX IF NOT EXISTS idx_history_url_method ON history(url, method);`,
 	);
 
-	await migrateLegacyHeaderQueryFormats(db);
+	// one-time legacy format migration
+	const migrated = await db.select(
+		"SELECT value FROM settings WHERE key = $1",
+		["legacyHeaderQueryMigrationDone"],
+	);
+	if (migrated.length === 0 || migrated[0].value !== "1") {
+		await migrateLegacyHeaderQueryFormats(db);
+		await db.execute(
+			"INSERT OR REPLACE INTO settings (key, value) VALUES ($1, $2)",
+			["legacyHeaderQueryMigrationDone", "1"],
+		);
+	}
 
 	return db;
 };
@@ -201,9 +212,9 @@ export const addToHistory = async (entry) => {
 		);
 	}
 
-	// keep only last 100 rows
+	// keep only last 50 rows (matches getHistoryItems read limit)
 	await database.execute(
-		"DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY date DESC LIMIT 100)",
+		"DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY date DESC LIMIT 50)",
 	);
 };
 
@@ -256,34 +267,48 @@ export const getCollectionsTree = async () => {
 	const folders = await db.select("SELECT * FROM folders");
 	const requests = await db.select("SELECT * FROM requests");
 
+	// index for O(1) lookups
+	const foldersByCollection = new Map();
+	const requestsByFolder = new Map();
+	const rootRequestsByCollection = new Map();
+	for (const f of folders) {
+		if (!foldersByCollection.has(f.collection_id))
+			foldersByCollection.set(f.collection_id, []);
+		foldersByCollection.get(f.collection_id).push(f);
+	}
+	for (const r of requests) {
+		if (r.folder_id) {
+			if (!requestsByFolder.has(r.folder_id))
+				requestsByFolder.set(r.folder_id, []);
+			requestsByFolder.get(r.folder_id).push(r);
+		} else {
+			if (!rootRequestsByCollection.has(r.collection_id))
+				rootRequestsByCollection.set(r.collection_id, []);
+			rootRequestsByCollection.get(r.collection_id).push(r);
+		}
+	}
+
+	const normalizeRequest = (r) => ({
+		...r,
+		type: "request",
+		headers: normalizeHeaders(r.headers),
+		queries: normalizeQueries(r.queries),
+		body: safeParseJson(r.body, ""),
+		auth: safeParseJson(r.auth, { type: "none" }),
+	});
+
 	return collections.map((col) => {
-		const colFolders = folders
-			.filter((f) => f.collection_id === col.id)
-			.map((folder) => ({
+		const colFolders = (foldersByCollection.get(col.id) || []).map(
+			(folder) => ({
 				...folder,
 				type: "folder",
-				items: requests
-					.filter((r) => r.folder_id === folder.id)
-					.map((r) => ({
-						...r,
-						type: "request",
-						headers: normalizeHeaders(r.headers),
-						queries: normalizeQueries(r.queries),
-						body: safeParseJson(r.body, ""),
-						auth: safeParseJson(r.auth, { type: "none" }),
-					})),
-			}));
+				items: (requestsByFolder.get(folder.id) || []).map(normalizeRequest),
+			}),
+		);
 
-		const rootRequests = requests
-			.filter((r) => r.collection_id === col.id && !r.folder_id)
-			.map((r) => ({
-				...r,
-				type: "request",
-				headers: normalizeHeaders(r.headers),
-				queries: normalizeQueries(r.queries),
-				body: safeParseJson(r.body, ""),
-				auth: safeParseJson(r.auth, { type: "none" }),
-			}));
+		const rootRequests = (rootRequestsByCollection.get(col.id) || []).map(
+			normalizeRequest,
+		);
 
 		return {
 			...col,
