@@ -281,6 +281,14 @@ function App() {
 		dispatch,
 	});
 
+	if (!state.settingsLoaded) {
+		return (
+			<div className="flex h-screen w-full items-center justify-center bg-stone-950 text-stone-300">
+				Loading…
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex h-screen w-full bg-stone-950 text-stone-100 font-sans overflow-hidden">
 			{/* 1. SIDEBAR */}

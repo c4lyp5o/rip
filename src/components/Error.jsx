@@ -1,10 +1,10 @@
 import { AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
 import { useState } from "react";
-import { useRip } from "../context/RIPContext";
+import { useRipActions } from "../context/RIPContext";
 import { useToast } from "../context/ToastContext";
 
 const ErrorDisplay = ({ error, onRetry }) => {
-	const { sendRequest } = useRip();
+	const { sendRequest } = useRipActions();
 	const handleRetry = onRetry || sendRequest;
 	const { showToast } = useToast();
 
