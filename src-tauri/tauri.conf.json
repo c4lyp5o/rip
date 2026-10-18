@@ -33,6 +33,12 @@
 			"icons/128x128@2x.png",
 			"icons/icon.icns",
 			"icons/icon.ico"
-		]
+		],
+		"publisher": "c4lyp5o",
+		"copyright": "Copyright \u00a9 2026 c4lyp5o",
+		"category": "DeveloperTool",
+		"shortDescription": "A desktop HTTP/REST API client",
+		"longDescription": "RIP is a desktop HTTP/REST API client for sending requests, inspecting responses, and persisting history and collections locally. Packaged as a native app with Tauri.",
+		"homepage": "https://github.com/c4lyp5o/rip"
 	}
 }
