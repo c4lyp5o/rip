@@ -55,6 +55,7 @@ vi.mock("../../utils/ripDb", () => {
 
 import App from "../../App";
 import { RipProvider } from "../../context/RIPContext";
+import { ThemeProvider } from "../../context/ThemeContext";
 import { ToastProvider } from "../../context/ToastContext";
 
 const openSavedRequest = async () => {
@@ -74,11 +75,13 @@ const openSavedRequest = async () => {
 describe("saved-request header persistence (reported bug)", () => {
 	it("Ctrl+S from inside the header input persists the edited header", async () => {
 		render(
+			<ThemeProvider>
 			<RipProvider>
 				<ToastProvider placement="bottom-right">
 					<App />
 				</ToastProvider>
-			</RipProvider>,
+			</RipProvider>
+			</ThemeProvider>,
 		);
 
 		await openSavedRequest();
@@ -103,11 +106,13 @@ describe("saved-request header persistence (reported bug)", () => {
 	it("the Save button click path also persists (regression guard)", async () => {
 		updateRequestMock.mockClear();
 		render(
+			<ThemeProvider>
 			<RipProvider>
 				<ToastProvider placement="bottom-right">
 					<App />
 				</ToastProvider>
-			</RipProvider>,
+			</RipProvider>
+			</ThemeProvider>,
 		);
 
 		await openSavedRequest();

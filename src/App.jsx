@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRip } from "./context/RIPContext";
+import { useTheme } from "./context/ThemeContext";
 import { useToast } from "./context/ToastContext";
 import {
 	deleteHistoryItem,
@@ -39,6 +40,7 @@ const TABS_CONFIG = [
 
 function App() {
 	const { state, dispatch, refreshCollections, sendRequest } = useRip();
+	const { themeId, setTheme, themes, importTheme, exportTheme } = useTheme();
 	const { workspaceTabs, activeWorkspaceTabId, history, collections } = state;
 	const { showToast } = useToast();
 
@@ -56,6 +58,7 @@ function App() {
 	});
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+	const [themeOpen, setThemeOpen] = useState(false);
 
 	// sidebar
 	const sidebarWidth = state.sidebarWidth ?? 224;
@@ -312,8 +315,26 @@ function App() {
 					isDraggingSidebar={isDraggingSidebar}
 					setIsDraggingSidebar={setIsDraggingSidebar}
 					setIsSettingsModalOpen={setIsSettingsModalOpen}
-				/>
-			</div>
+					/>
+					<div style={{ padding: "8px 12px", borderTop: "1px solid var(--line, #262a33)" }}>
+					<button onClick={() => setThemeOpen((o) => !o)} style={{ width: "100%", padding: "8px 10px", background: "transparent", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 6, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+						Theme: {themes.find((t) => t.id === themeId)?.name || themeId}
+					</button>
+					{themeOpen && (
+						<div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflow: "auto" }}>
+							{themes.map((t) => (
+								<button key={t.id} onClick={() => { setTheme(t.id); setThemeOpen(false); }} style={{ padding: "6px 10px", background: t.id === themeId ? "var(--panel)" : "transparent", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 4, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
+									{t.name}
+								</button>
+							))}
+							<div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+								<button onClick={async () => { const j = window.prompt("Paste theme JSON:"); if (j) { try { await importTheme(j); setThemeOpen(false); } catch (e) { alert("Invalid theme: " + e.message); } } }} style={{ flex: 1, padding: "4px 6px", fontSize: 10, background: "transparent", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, cursor: "pointer" }}>Import</button>
+								<button onClick={() => { const j = exportTheme(themeId); if (j) { navigator.clipboard?.writeText(j); alert("Theme JSON copied to clipboard."); } }} style={{ flex: 1, padding: "4px 6px", fontSize: 10, background: "transparent", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, cursor: "pointer" }}>Export</button>
+							</div>
+						</div>
+					)}
+					</div>
+					</div>
 
 			<WorkspacePanel
 				workspaceTabs={workspaceTabs}

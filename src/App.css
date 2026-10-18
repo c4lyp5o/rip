@@ -1,5 +1,66 @@
 @import "tailwindcss";
 
+/* ---- Theme tokens (mapped to Tailwind so existing utilities follow the theme) ---- */
+@theme {
+  --color-stone-950: var(--bg);
+  --color-stone-900: var(--bg2);
+  --color-stone-800: var(--line);
+  --color-stone-700: var(--muted);
+  --color-stone-600: var(--muted);
+  --color-stone-500: var(--muted);
+  --color-stone-400: var(--muted);
+  --color-stone-300: var(--ink-soft);
+  --color-stone-200: var(--ink);
+  --color-stone-100: var(--ink);
+
+  --color-emerald-600: var(--green);
+  --color-emerald-500: var(--green);
+  --color-emerald-400: var(--green);
+  --color-green-400: var(--green);
+  --color-green-500: var(--green);
+  --color-green-600: var(--green);
+
+  --color-red-600: var(--red);
+  --color-red-500: var(--red);
+  --color-red-400: var(--red);
+
+  --color-blue-600: var(--blue);
+  --color-blue-500: var(--blue);
+  --color-blue-400: var(--blue);
+
+  --color-violet-600: var(--violet);
+  --color-violet-500: var(--violet);
+  --color-violet-400: var(--violet);
+  --color-purple-600: var(--violet);
+  --color-purple-500: var(--violet);
+  --color-purple-400: var(--violet);
+
+  --color-amber-600: var(--amber);
+  --color-amber-500: var(--amber);
+  --color-amber-400: var(--amber);
+
+  --color-yellow-400: var(--amber);
+}
+
+/* Default theme: Terminal Soft */
+:root {
+  --bg: #0c0f0c;
+  --bg2: #131713;
+  --panel: #181c18;
+  --ink: #d6e8d6;
+  --ink-soft: #a8c4a8;
+  --muted: #6f8a6f;
+  --line: #243024;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #7dd3fc;
+  --violet: #a78bfa;
+  --amber: #fcd34d;
+  --accent: #4ade80;
+}
+
+body { background: var(--bg); color: var(--ink); }
+
 @keyframes fade-in-up {
 	0% {
 		opacity: 0;

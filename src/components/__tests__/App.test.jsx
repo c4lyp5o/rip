@@ -30,6 +30,7 @@ vi.mock("../../utils/ripDb", () => {
 
 import App from "../../App";
 import { RipProvider } from "../../context/RIPContext";
+import { ThemeProvider } from "../../context/ThemeContext";
 import { ToastProvider } from "../../context/ToastContext";
 
 // Regression guards for the half-applied extraction of 330f9e4:
@@ -41,11 +42,13 @@ import { ToastProvider } from "../../context/ToastContext";
 describe("App (root mount)", () => {
 	it("mounts and renders the sidebar navigation", async () => {
 		render(
-			<RipProvider>
+			<ThemeProvider>
+				<RipProvider>
 				<ToastProvider placement="bottom-right">
 					<App />
 				</ToastProvider>
-			</RipProvider>,
+			</RipProvider>
+			</ThemeProvider>,
 		);
 
 		expect(await screen.findByText("History")).toBeInTheDocument();
@@ -54,11 +57,13 @@ describe("App (root mount)", () => {
 
 	it("boots with a default tab and renders the request UI exactly once", async () => {
 		render(
-			<RipProvider>
+			<ThemeProvider>
+				<RipProvider>
 				<ToastProvider placement="bottom-right">
 					<App />
 				</ToastProvider>
-			</RipProvider>,
+			</RipProvider>
+			</ThemeProvider>,
 		);
 
 		const urlInput = await screen.findByRole("textbox");
