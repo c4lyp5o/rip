@@ -12,8 +12,7 @@
 				{ "url": "http://**" },
 				{ "url": "https://**" },
 				{ "url": "http://localhost:*/**" },
-				{ "url": "http://127.0.0.1:*/**" },
-				{ "url": "http://*:*/**" }
+				{ "url": "http://127.0.0.1:*/**" }
 			],
 			"deny": [{ "url": "https://private.tauri.app" }]
 		},

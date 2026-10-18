@@ -111,3 +111,16 @@ src-tauri/              Rust backend, Tauri config, capabilities
 Requests, history, collections, and settings are stored in a local SQLite
 database (`plugin-sql`). On first launch the app migrates any legacy header/query
 formats into the current normalized shape.
+
+
+---
+
+## Security notes
+
+- Request history, saved requests, and exported backups store authentication
+  credentials (bearer tokens, basic-auth usernames/passwords) **in plaintext**
+  inside the local SQLite database (`history6.db`) and in JSON exports.
+- Treat the database file and any exported backup as sensitive: do not share
+  them, and delete exports after use. The app has no server component and
+  stores everything locally, so protection of these files is the user's
+  responsibility.
