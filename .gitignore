@@ -14,19 +14,43 @@ dist-ssr
 
 # Rust / Tauri build artifacts
 src-tauri/target
+src-tauri/gen/schemas
 
-# Editor directories and files
+# Secrets â€” never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+secrets.yaml
+
+# Editor / OS noise
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.bak
+*.orig
+*.rej
 
 .zvec-grep
 
 # Local visual-audit artefacts (scripts/audit/*.mjs output)
 screenshots/
+
+# Mobile and Windows Store icon sets.
+# This is a desktop-only app: `tauri icon` regenerates them but nothing
+# ships them, so they are not tracked.
+src-tauri/icons/android/
+src-tauri/icons/ios/
+src-tauri/icons/Square*.png
+src-tauri/icons/StoreLogo.png

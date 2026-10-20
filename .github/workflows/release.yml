@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v0.1.0)"
+        description: "Tag to release (e.g. v1.0.0)"
         required: true
 
 permissions:
@@ -53,14 +53,28 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      - name: Sweep the history for credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+        with:
+          args: --redact=0 --config .gitleaks.toml --verbose
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: "RIP ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseBody: "See the assets below to download and install RIP for your platform."
+          releaseName: "REST In Peace ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseBody: |
+            **REST In Peace** — a native desktop HTTP/REST API client.
+
+            Download the installer for your platform below. Everything the app
+            stores stays on your machine, in a local SQLite database.
+
+            The request and the response sit side by side, both always visible.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

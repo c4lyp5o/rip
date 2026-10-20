@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,3 +29,23 @@ jobs:
 
       - name: Build frontend
         run: bun run build
+
+  # The repository is public, so a credential committed once is disclosed
+  # once. This gate runs on every push and pull request and fails the build
+  # on any finding. The allowlist lives in .gitleaks.toml at the repo root
+  # and contains verified false positives only.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sweep the full history for credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+        with:
+          args: --redact=0 --config .gitleaks.toml --verbose

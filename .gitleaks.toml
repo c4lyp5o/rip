@@ -1,0 +1,29 @@
+# Gitleaks configuration for RIP.
+#
+# The repo is PUBLIC, so a credential committed once is a credential
+# disclosed once. This config is the gate: run it before every push and
+# block on anything other than exit code 0.
+#
+#   ~/tools/gitleaks git --redact=0 --report-path /tmp/leaks.json .
+#
+# The allowlist below contains only VERIFIED false positives, each with a
+# reason. Never exempt a file by name to silence a real finding — that is
+# how a real secret survives a dozen "clean" sweeps.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Verified false positives only."
+
+paths = [
+  # The audit scripts print a response body during a visual check; the
+  # fixtures they use are not credentials.
+  '''scripts/audit/.*''',
+]
+
+regexes = [
+  # The dev-preview HTTP stub returns a fictional Stripe payload. The
+  # "ch_..." strings are made-up charge ids, not card or token data.
+  '''ch_3PxL[0-9A-Za-z]{10,}''',
+]

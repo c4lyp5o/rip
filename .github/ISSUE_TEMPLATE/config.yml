@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/c4lyp5o/rip/issues
+    about: >
+      Do not open a public issue for a security problem. Email the maintainer
+      first so a fix can be prepared before it is disclosed.
