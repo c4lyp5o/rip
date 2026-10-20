@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="REST In Peace">
+  <title>REST In Peace</title>
+  <!--
+    The RIP mark: a dove in flight, on the Studio ground.
+    This is the icon SOURCE. `tauri icon public/icon-source.svg` generates
+    every platform icon from it. The favicon in the webview is
+    public/icon.svg, which is the same mark on transparency.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12141a" />
+      <stop offset="1" stop-color="#08090c" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="228" fill="url(#ground)" />
+
+  <!--
+    Scaled about the mark's own centre and re-centred on the canvas, so it
+    reads at 32px instead of floating in the middle of the frame.
+  -->
+  <g transform="translate(0,74) translate(512,438) scale(1.18) translate(-512,-438)">
+    <!-- The dove. -->
+    <path
+      fill="#5ce08a"
+      d="M512 356
+         C566 284 648 238 742 238
+         C688 284 650 330 622 376
+         C688 358 762 376 826 422
+         C744 422 678 432 632 468
+         C688 486 744 524 782 580
+         C680 552 596 534 512 534
+         C428 534 344 552 242 580
+         C280 524 336 486 392 468
+         C346 432 280 422 198 422
+         C262 376 336 358 402 376
+         C374 330 336 284 282 238
+         C376 238 458 284 512 356 Z" />
+
+    <!-- A thin rule under the dove: the "in peace" ground line. -->
+    <rect x="352" y="620" width="320" height="18" rx="9" fill="#5ce08a" opacity="0.42" />
+  </g>
+</svg>

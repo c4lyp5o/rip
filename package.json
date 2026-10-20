@@ -2,7 +2,35 @@
   "name": "rip",
   "private": true,
   "version": "1.0.0",
+  "description": "REST In Peace â€” a native desktop HTTP/REST API client. Send requests, inspect responses, keep history and collections, all stored locally in SQLite.",
   "type": "module",
+  "author": {
+    "name": "Calypso",
+    "email": "calypso@calypsocloud.one",
+    "url": "https://github.com/c4lyp5o"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/c4lyp5o/rip#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/c4lyp5o/rip.git"
+  },
+  "bugs": {
+    "url": "https://github.com/c4lyp5o/rip/issues"
+  },
+  "keywords": [
+    "rest",
+    "http",
+    "api",
+    "client",
+    "postman",
+    "insomnia",
+    "tauri",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
