@@ -24,7 +24,9 @@ const RipActionsContext = createContext(null);
 const defaultWorkspaceTabTemplate = {
 	name: "New Request",
 	savedRequestId: null,
-	activeSubTab: "response",
+	// The response is a permanent pane in the Studio layout, not a sub-tab.
+	// This now points at the request section being edited.
+	activeSubTab: "params",
 	method: "GET",
 	url: "",
 	queries: [],
@@ -71,7 +73,9 @@ const ripReducerInitialState = {
 	history: [],
 	collections: [],
 	networkDelay: 0,
-	sidebarWidth: 224,
+	// Wide enough for a readable URL fragment in a history row; the rail is
+	// resizable and the width is persisted per user.
+	sidebarWidth: 256,
 	settingsLoaded: false,
 };
 
@@ -117,9 +121,10 @@ const ripReducer = (state, action) => {
 			const method = action.payload;
 			const activeTab = getActiveTab(state);
 			if (!activeTab) return state;
+			// GET has no body section, so fall back to the first request tab.
 			const newActiveSubTab =
 				method === "GET" && activeTab.activeSubTab === "body"
-					? "response"
+					? "params"
 					: activeTab.activeSubTab;
 			return updateTab(state, { method, activeSubTab: newActiveSubTab });
 		}
@@ -293,7 +298,7 @@ const ripReducer = (state, action) => {
 				id,
 				name: data.name || data.url || "Request",
 				savedRequestId: data.collection_id ? data.id : null,
-				activeSubTab: "response",
+				activeSubTab: "params",
 				method: data.method || "GET",
 				url: data.url || "",
 				queries:
@@ -451,8 +456,8 @@ export const RipProvider = ({ children }) => {
 
 			if (!tab || tab.isFetching) return;
 
-			dispatch({ type: "SET_ACTIVE_SUB_TAB", payload: "response" });
-
+			// No sub-tab switch on send: the response pane is always visible
+			// beside the request, so the request section stays where it was.
 			if (fetcherRef.current) {
 				fetcherRef.current(tab, state.networkDelay);
 			}

@@ -58,12 +58,12 @@ export const ToastProvider = ({ children, placement = "top-right" }) => {
 								: "opacity-100 translate-x-0"
 						} ${
 							toast.type === "success"
-								? "border-green-200 bg-green-50 text-green-700"
+								? "border-green-500/30 bg-green-500/10 text-green-500"
 								: toast.type === "error"
-									? "border-red-200 bg-red-50 text-red-700"
+									? "border-red-500/30 bg-red-500/10 text-red-500"
 									: toast.type === "warning"
-										? "border-yellow-200 bg-yellow-50 text-yellow-700"
-										: "border-slate-200 bg-white text-slate-700"
+										? "border-yellow-500/30 bg-yellow-500/10 text-yellow-500"
+										: "border-slate-200 bg-slate-50 text-slate-700"
 						}`}
 					>
 						{icons[toast.type] ?? icons.info}

@@ -198,16 +198,16 @@ const JsonViewer = ({ data }) => {
 		<div className="absolute inset-0">
 			<div className="flex flex-col w-full h-full bg-stone-950 relative">
 				{/* --- Search Bar Toolbar --- */}
-				<div className="absolute top-2 right-4 z-50 flex items-center bg-stone-900 border border-stone-700 rounded shadow-lg px-2 py-1 gap-2 opacity-60 focus-within:opacity-100 hover:opacity-100 transition-opacity">
-					<Search className="w-3.5 h-3.5 text-stone-400" />
+				<div className="absolute top-2 right-4 z-50 flex items-center bg-stone-900 border border-stone-750 rounded-md shadow-lg px-2 py-1 gap-2">
+					<Search className="w-3.5 h-3.5 text-stone-500" />
 
 					<input
 						type="text"
-						placeholder="Find..."
+						placeholder="Find…"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						onKeyDown={handleSearchKeyDown}
-						className="bg-transparent text-xs text-stone-200 outline-none w-32 font-mono"
+						className="bg-transparent text-[12.5px] text-stone-200 outline-none w-32 font-mono placeholder-stone-600"
 					/>
 
 					{/* Match Counter & Controls */}
@@ -298,8 +298,8 @@ const JsonViewer = ({ data }) => {
 									</div>
 
 									{line.keyName !== null && !line.isEnd && (
-										<span className="text-stone-200 mr-1.5">
-											"<Highlight text={line.keyName} search={searchQuery} />
+										<span className="text-blue-400 mr-1.5">
+											"<Highlight text={line.keyName} search={searchQuery} />"
 											":
 										</span>
 									)}

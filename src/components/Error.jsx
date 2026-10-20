@@ -39,8 +39,8 @@ const ErrorDisplay = ({ error, onRetry }) => {
 
 			<div className="w-full max-w-2xl bg-stone-900/80 border border-red-900/30 rounded-lg overflow-hidden mb-6">
 				<div className="flex items-center justify-between px-4 py-2 border-b border-stone-800 bg-stone-950/50">
-					<span className="text-[10px] font-mono text-red-400 uppercase tracking-wider">
-						Error Details
+					<span className="text-[11px] font-mono text-red-400">
+						Error details
 					</span>
 					<button
 						type="button"

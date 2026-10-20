@@ -60,7 +60,7 @@ const BlobViewer = ({ blob, contentType, filename }) => {
 			<button
 				type="button"
 				onClick={handleDownload}
-				className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
+				className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-on-green px-6 py-2.5 rounded-lg font-medium transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
 			>
 				<Download className="w-4 h-4" />
 				<span>Download File</span>

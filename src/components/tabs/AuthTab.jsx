@@ -1,52 +1,67 @@
 import { useRip } from "../../context/RIPContext";
 
-import CompactSelect from "../reusables/CompactSelect";
-
+/**
+ * The Auth pane. One clear question: how do we authenticate? Type first,
+ * then the credential it needs.
+ */
 const AuthTab = () => {
-	const { state, dispatch, fetcherRef, refreshCollections } = useRip();
-	const { methods, workspaceTabs, activeWorkspaceTabId, collections } = state;
+	const { state, dispatch } = useRip();
+	const { workspaceTabs, activeWorkspaceTabId } = state;
 
 	const activeWorkspace = workspaceTabs.find(
 		(tab) => tab.id === activeWorkspaceTabId,
 	);
 
+	if (!activeWorkspace) return null;
+
+	const authType = activeWorkspace.auth?.type || "none";
+
 	return (
-		<div className="flex flex-col h-full">
-			<div className="flex items-center px-4 py-2 border-b border-stone-700 bg-stone-900/30 gap-4">
-				<span className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">
-					Authentication Type
-				</span>
-				<CompactSelect
-					value={activeWorkspace.auth?.type || "none"}
-					options={["none", "bearer", "basic"]}
-					onChange={(e) =>
-						dispatch({
-							type: "SET_AUTH",
-							payload: { type: e.target.value },
-						})
-					}
-					className="w-32 bg-stone-800 border border-stone-700 rounded h-7"
-				/>
-			</div>
-			<div className="flex-1 overflow-y-auto p-4">
-				{(!activeWorkspace.auth || activeWorkspace.auth.type === "none") && (
-					<div className="flex flex-col items-center justify-center h-40 text-stone-500 text-xs">
-						<p>No authentication required for this request.</p>
+		<div className="flex flex-col h-full min-h-0">
+			<div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+				{/* Type picker */}
+				<div className="flex items-center gap-2 mb-4">
+					{["none", "bearer", "basic"].map((type) => (
+						<button
+							key={type}
+							type="button"
+							onClick={() =>
+								dispatch({ type: "SET_AUTH", payload: { type } })
+							}
+							aria-pressed={authType === type}
+							className={`h-8 px-3 rounded-md text-[12.5px] border transition-colors cursor-pointer ${
+								authType === type
+									? "bg-violet-500/15 border-violet-500/40 text-violet-400 font-medium"
+									: "bg-stone-900 border-stone-750 text-stone-400 hover:text-stone-200 hover:border-stone-700"
+							}`}
+						>
+							{type === "none"
+								? "No auth"
+								: type === "bearer"
+									? "Bearer token"
+									: "Basic"}
+						</button>
+					))}
+				</div>
+
+				{authType === "none" && (
+					<div className="py-8 text-center text-[12.5px] text-stone-600">
+						No authentication required for this request.
 					</div>
 				)}
 
-				{activeWorkspace.auth?.type === "bearer" && (
-					<div className="max-w-md space-y-3">
+				{authType === "bearer" && (
+					<div className="max-w-md space-y-2">
 						<label
 							htmlFor="bearer-token"
-							className="block text-xs text-stone-400"
+							className="block text-[12.5px] text-stone-400"
 						>
-							Bearer Token
+							Token
 						</label>
 						<input
 							id="bearer-token"
 							type="text"
-							placeholder="ey..."
+							placeholder="eyJhbGciOi..."
 							value={activeWorkspace.auth?.token || ""}
 							onChange={(e) =>
 								dispatch({
@@ -54,17 +69,17 @@ const AuthTab = () => {
 									payload: { token: e.target.value },
 								})
 							}
-							className="w-full bg-stone-900/50 border border-stone-700/50 rounded px-2 py-1.5 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 font-mono"
+							className="w-full h-9 px-3 rounded-md bg-stone-900 border border-stone-750 text-[13px] font-mono text-stone-200 placeholder-stone-600 outline-none transition-colors focus:border-violet-500"
 						/>
 					</div>
 				)}
 
-				{activeWorkspace.auth?.type === "basic" && (
+				{authType === "basic" && (
 					<div className="max-w-md space-y-3">
 						<div>
 							<label
 								htmlFor="auth-username"
-								className="block text-xs text-stone-400 mb-1"
+								className="block text-[12.5px] text-stone-400 mb-1"
 							>
 								Username
 							</label>
@@ -78,13 +93,13 @@ const AuthTab = () => {
 										payload: { username: e.target.value },
 									})
 								}
-								className="w-full bg-stone-900/50 border border-stone-700/50 rounded px-2 py-1.5 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 font-mono"
+								className="w-full h-9 px-3 rounded-md bg-stone-900 border border-stone-750 text-[13px] font-mono text-stone-200 outline-none transition-colors focus:border-violet-500"
 							/>
 						</div>
 						<div>
 							<label
 								htmlFor="auth-password"
-								className="block text-xs text-stone-400 mb-1"
+								className="block text-[12.5px] text-stone-400 mb-1"
 							>
 								Password
 							</label>
@@ -98,7 +113,7 @@ const AuthTab = () => {
 										payload: { password: e.target.value },
 									})
 								}
-								className="w-full bg-stone-900/50 border border-stone-700/50 rounded px-2 py-1.5 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 font-mono"
+								className="w-full h-9 px-3 rounded-md bg-stone-900 border border-stone-750 text-[13px] font-mono text-stone-200 outline-none transition-colors focus:border-violet-500"
 							/>
 						</div>
 					</div>

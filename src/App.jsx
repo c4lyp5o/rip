@@ -1,23 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRip } from "./context/RIPContext";
-import { useTheme } from "./context/ThemeContext";
 import { useToast } from "./context/ToastContext";
 import {
 	deleteHistoryItem,
 	clearHistory,
-	// getCollectionsTree, // later
 	deleteCollection,
 	deleteRequest,
 	updateRequest,
 } from "./utils/ripDb";
 import { isSameRequest } from "./utils/requestNormalization";
-import {
-	AlignLeft,
-	Code2,
-	Key,
-	Package,
-	Terminal,
-} from "lucide-react";
 import "./App.css";
 
 import SidebarPanel from "./components/SidebarPanel";
@@ -27,25 +18,20 @@ import CreateCollectionModal from "./components/modals/CreateCollectionModal";
 import SettingsModal from "./components/modals/SettingsModal";
 import useSidebarResize from "./hooks/useSidebarResize";
 import useGlobalShortcuts from "./hooks/useGlobalShortcuts";
+import useUpdateRequest from "./hooks/useUpdateRequest";
 
-const TABS_CONFIG = [
-	{ id: "auth", label: "Auth", icon: Key },
-	{ id: "headers", label: "Headers", icon: Package },
-	{ id: "queries", label: "Queries", icon: Code2 },
-	{ id: "body", label: "Body", icon: AlignLeft },
-	{ id: "response", label: "Response", icon: Terminal },
-];
-
-// --- Main App Component ---
-
+/**
+ * The app shell: sidebar on the left, workspace on the right.
+ *
+ * The theme lives in the sidebar footer (see ThemeMenu), so the top-level
+ * component carries no theme UI of its own.
+ */
 function App() {
 	const { state, dispatch, refreshCollections, sendRequest } = useRip();
-	const { themeId, setTheme, themes, importTheme, exportTheme } = useTheme();
 	const { workspaceTabs, activeWorkspaceTabId, history, collections } = state;
 	const { showToast } = useToast();
 
 	// UI Local State
-	const [activeSpace, setActiveSpace] = useState("history");
 	const [showSaveMenu, setShowSaveMenu] = useState(false);
 	const [showCodeMenu, setShowCodeMenu] = useState(false);
 
@@ -58,34 +44,22 @@ function App() {
 	});
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-	const [themeOpen, setThemeOpen] = useState(false);
 
 	// sidebar
 	const sidebarWidth = state.sidebarWidth ?? 224;
-	const { isDraggingSidebar, setIsDraggingSidebar } = useSidebarResize(sidebarWidth, dispatch);
+	const { isDraggingSidebar, setIsDraggingSidebar } = useSidebarResize(
+		sidebarWidth,
+		dispatch,
+	);
 
-	// experimental
-	// const [urlDraft, setUrlDraft] = useState("");
-	// const [bodyDraft, setBodyDraft] = useState("");
-
-	const activeWorkspace = workspaceTabs.find(
-		(tab) => tab.id === activeWorkspaceTabId,
+	const activeWorkspace = useMemo(
+		() => workspaceTabs.find((tab) => tab.id === activeWorkspaceTabId),
+		[workspaceTabs, activeWorkspaceTabId],
 	);
 
 	const isFetching = activeWorkspace?.isFetching ?? false;
 
-	const visibleTabs = useMemo(() => {
-		if (!activeWorkspace) return [];
-
-		return TABS_CONFIG.filter((tab) => {
-			if (tab.id === "body" && activeWorkspace.method === "GET") {
-				return false;
-			}
-			return true;
-		});
-	}, [activeWorkspace]);
-
-	// --- Handlers ---
+	const handleUpdateRequest = useUpdateRequest();
 
 	const handleRenameTab = async (tabId, newName) => {
 		dispatch({ type: "SET_TAB_NAME", payload: { id: tabId, name: newName } });
@@ -239,38 +213,30 @@ function App() {
 		});
 	};
 
-	const handleUpdateRequest = async () => {
-		if (!activeWorkspace || !activeWorkspace.savedRequestId) return;
-
-		const tab = activeWorkspace;
-
-		try {
-			await updateRequest(tab.savedRequestId, {
-				name: tab.name || tab.url || "Untitled",
-				method: tab.method,
-				url: tab.url,
-				headers: tab.headers,
-				queries: tab.queries,
-				body: tab.body,
-				auth: tab.auth,
-			});
-			await refreshCollections();
-			showToast("Saved changes", "success");
-		} catch (error) {
-			if (import.meta.env.DEV)
-				console.error("Failed to update saved request:", error);
-			showToast("Failed to update request", "error");
-		}
-	};
-
+	// Close the Save / Copy-as menus when the user clicks away.
+	//
+	// The listener is attached on the NEXT TICK, not synchronously. React
+	// flushes this effect inside the same click dispatch that opened the
+	// menu, so a listener attached here would receive that very click and
+	// close the menu the instant it opened. Deferring the attach lets the
+	// opening click finish propagating first; the next click anywhere else
+	// closes the menu as intended.
 	useEffect(() => {
 		if (!showSaveMenu && !showCodeMenu) return;
+
 		const handleClick = () => {
 			setShowSaveMenu(false);
 			setShowCodeMenu(false);
 		};
-		document.addEventListener("click", handleClick);
-		return () => document.removeEventListener("click", handleClick);
+
+		const attach = setTimeout(() => {
+			document.addEventListener("click", handleClick);
+		}, 0);
+
+		return () => {
+			clearTimeout(attach);
+			document.removeEventListener("click", handleClick);
+		};
 	}, [showSaveMenu, showCodeMenu]);
 
 	useGlobalShortcuts({
@@ -286,7 +252,7 @@ function App() {
 
 	if (!state.settingsLoaded) {
 		return (
-			<div className="flex h-screen w-full items-center justify-center bg-stone-950 text-stone-300">
+			<div className="flex h-screen w-full items-center justify-center bg-stone-950 text-stone-400">
 				Loading…
 			</div>
 		);
@@ -295,51 +261,26 @@ function App() {
 	return (
 		<div className="flex h-screen w-full bg-stone-950 text-stone-100 font-sans overflow-hidden">
 			{/* 1. SIDEBAR */}
-			<div
-				style={{ width: sidebarWidth }}
-				className="flex flex-col shrink-0 border-r border-stone-800 bg-stone-900 relative transition-[width] duration-0"
-			>
-				<SidebarPanel
-					sidebarWidth={sidebarWidth}
-					activeSpace={activeSpace}
-					setActiveSpace={setActiveSpace}
-					history={history}
-					collections={collections}
-					handleLoadHistoryItemById={handleLoadHistoryItemById}
-					handleLoadRequest={handleLoadRequest}
-					confirmClearHistory={confirmClearHistory}
-					confirmDeleteHistoryItem={confirmDeleteHistoryItem}
-					confirmDeleteCollection={confirmDeleteCollection}
-					confirmDeleteRequest={confirmDeleteRequest}
-					setIsCreateModalOpen={setIsCreateModalOpen}
-					isDraggingSidebar={isDraggingSidebar}
-					setIsDraggingSidebar={setIsDraggingSidebar}
-					setIsSettingsModalOpen={setIsSettingsModalOpen}
-					/>
-					<div style={{ padding: "8px 12px", borderTop: "1px solid var(--line, #262a33)" }}>
-					<button onClick={() => setThemeOpen((o) => !o)} style={{ width: "100%", padding: "8px 10px", background: "transparent", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 6, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
-						Theme: {themes.find((t) => t.id === themeId)?.name || themeId}
-					</button>
-					{themeOpen && (
-						<div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflow: "auto" }}>
-							{themes.map((t) => (
-								<button key={t.id} onClick={() => { setTheme(t.id); setThemeOpen(false); }} style={{ padding: "6px 10px", background: t.id === themeId ? "var(--panel)" : "transparent", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 4, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
-									{t.name}
-								</button>
-							))}
-							<div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-								<button onClick={async () => { const j = window.prompt("Paste theme JSON:"); if (j) { try { await importTheme(j); setThemeOpen(false); } catch (e) { alert("Invalid theme: " + e.message); } } }} style={{ flex: 1, padding: "4px 6px", fontSize: 10, background: "transparent", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, cursor: "pointer" }}>Import</button>
-								<button onClick={() => { const j = exportTheme(themeId); if (j) { navigator.clipboard?.writeText(j); alert("Theme JSON copied to clipboard."); } }} style={{ flex: 1, padding: "4px 6px", fontSize: 10, background: "transparent", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, cursor: "pointer" }}>Export</button>
-							</div>
-						</div>
-					)}
-					</div>
-					</div>
+			<SidebarPanel
+				sidebarWidth={sidebarWidth}
+				history={history}
+				collections={collections}
+				handleLoadHistoryItemById={handleLoadHistoryItemById}
+				handleLoadRequest={handleLoadRequest}
+				confirmClearHistory={confirmClearHistory}
+				confirmDeleteHistoryItem={confirmDeleteHistoryItem}
+				confirmDeleteCollection={confirmDeleteCollection}
+				confirmDeleteRequest={confirmDeleteRequest}
+				setIsCreateModalOpen={setIsCreateModalOpen}
+				isDraggingSidebar={isDraggingSidebar}
+				setIsDraggingSidebar={setIsDraggingSidebar}
+				setIsSettingsModalOpen={setIsSettingsModalOpen}
+			/>
 
+			{/* 2. WORKSPACE */}
 			<WorkspacePanel
 				workspaceTabs={workspaceTabs}
 				activeWorkspaceTabId={activeWorkspaceTabId}
-				visibleTabs={visibleTabs}
 				activeWorkspace={activeWorkspace}
 				state={state}
 				handleDeleteTab={handleDeleteTab}
@@ -352,8 +293,7 @@ function App() {
 				dispatch={dispatch}
 			/>
 
-				{/* 3. MODALS */}
-			{/* Confirm Dialog Modal */}
+			{/* 3. MODALS */}
 			{confirmDeletionModal.isOpen && (
 				<ConfirmDeletionModal
 					confirmDeletionModal={confirmDeletionModal}
@@ -361,12 +301,10 @@ function App() {
 				/>
 			)}
 
-			{/* Create Collection Modal */}
 			{isCreateModalOpen && (
 				<CreateCollectionModal setIsCreateModalOpen={setIsCreateModalOpen} />
 			)}
 
-			{/* Settings Modal */}
 			{isSettingsModalOpen && (
 				<SettingsModal setIsSettingsModalOpen={setIsSettingsModalOpen} />
 			)}
