@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "preview:web": "vite --config vite.preview.config.js",
     "tauri": "tauri",
     "test": "vitest",
     "test:ui": "vitest --ui",

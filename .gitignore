@@ -27,3 +27,6 @@ src-tauri/target
 *.sw?
 
 .zvec-grep
+
+# Local visual-audit artefacts (scripts/audit/*.mjs output)
+screenshots/
