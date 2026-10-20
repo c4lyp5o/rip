@@ -10,7 +10,7 @@
         "@tauri-apps/api": "^2.12.4",
         "@tauri-apps/plugin-http": "~2.8.3",
         "@tauri-apps/plugin-opener": "^2.7.2",
-        "@tauri-apps/plugin-sql": "~2.4.1",
+        "@tauri-apps/plugin-sql": "^2.6.0",
         "lucide-react": "^1.59.0",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
@@ -216,7 +216,7 @@
 
     "@tauri-apps/plugin-opener": ["@tauri-apps/plugin-opener@2.7.2", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-LyybP1VSzTMQiaFYcsbAse47KpivlyXdLZMQzGLEnkgQacGESnpjAfFoQ6h5sqWgAdZDH9szYjPzHMpv0Sz+TQ=="],
 
-    "@tauri-apps/plugin-sql": ["@tauri-apps/plugin-sql@2.4.1", "", { "dependencies": { "@tauri-apps/api": "^2.11.0" } }, "sha512-w9fImJ2XaCLFEj+kLbs8nO/Idq89mpjl//Bm37JZo8AugbaVzaW5iHTjjcozHjtLgjb0IAQjYromv0YpzDOFkA=="],
+    "@tauri-apps/plugin-sql": ["@tauri-apps/plugin-sql@2.6.0", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-UfP4p3Zwh6N7ODRMgnMgXSN6rfUxFo7YXHnRjX8L3Vx7i+IV0bh+r8puwv2OnGq04SLDZFY+LvotxN+pJdZ1Zg=="],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.2", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q=="],
 
