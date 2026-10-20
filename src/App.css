@@ -1,65 +1,184 @@
 @import "tailwindcss";
+@import "./fonts.css";
 
-/* ---- Theme tokens (mapped to Tailwind so existing utilities follow the theme) ---- */
+/* ---------------------------------------------------------------------------
+   RIP design tokens — "Studio" direction.
+
+   Minimal, dark, low-glare. One ground, one ink, one accent. Colour carries
+   MEANING, never decoration:
+
+     green  = send / 2xx / POST
+     blue   = GET / latency
+     red    = delete / 4xx-5xx
+     violet = PATCH / auth
+     amber  = warning / pending
+
+   Every theme in src/themes/themes.js supplies this same variable set, so
+   switching a theme restyles the whole app without touching a component.
+
+   The Tailwind colour names are remapped onto these variables. That keeps
+   every existing utility class theme-aware: `bg-stone-900` is always the
+   theme's secondary ground, `text-stone-300` is always its secondary ink.
+   --------------------------------------------------------------------------- */
+
 @theme {
-  --color-stone-950: var(--bg);
-  --color-stone-900: var(--bg2);
-  --color-stone-800: var(--line);
-  --color-stone-700: var(--muted);
-  --color-stone-600: var(--muted);
-  --color-stone-500: var(--muted);
-  --color-stone-400: var(--muted);
-  --color-stone-300: var(--ink-soft);
-  --color-stone-200: var(--ink);
-  --color-stone-100: var(--ink);
+	/* Surfaces — deepest to nearest */
+	--color-stone-950: var(--bg);
+	--color-stone-900: var(--bg2);
+	--color-stone-850: var(--panel);
+	--color-stone-800: var(--line);
+	--color-stone-750: var(--line-soft, var(--line));
+	--color-stone-700: var(--muted);
+	--color-stone-600: var(--muted);
+	--color-stone-500: var(--muted);
+	--color-stone-400: var(--muted);
+	--color-stone-300: var(--ink-soft);
+	--color-stone-200: var(--ink);
+	--color-stone-100: var(--ink);
 
-  --color-emerald-600: var(--green);
-  --color-emerald-500: var(--green);
-  --color-emerald-400: var(--green);
-  --color-green-400: var(--green);
-  --color-green-500: var(--green);
-  --color-green-600: var(--green);
+	/* Semantics */
+	--color-emerald-900: var(--green);
+	--color-emerald-700: var(--green);
+	--color-emerald-600: var(--green);
+	--color-emerald-500: var(--green);
+	--color-emerald-400: var(--green);
+	--color-emerald-300: var(--green);
+	--color-emerald-200: var(--green);
+	--color-emerald-100: var(--ink-soft);
+	--color-emerald-50: var(--green);
 
-  --color-red-600: var(--red);
-  --color-red-500: var(--red);
-  --color-red-400: var(--red);
+	--color-green-700: var(--green);
+	--color-green-600: var(--green);
+	--color-green-500: var(--green);
+	--color-green-400: var(--green);
+	--color-green-200: var(--green);
+	--color-green-50: var(--green);
 
-  --color-blue-600: var(--blue);
-  --color-blue-500: var(--blue);
-  --color-blue-400: var(--blue);
+	--color-red-900: var(--red);
+	--color-red-700: var(--red);
+	--color-red-600: var(--red);
+	--color-red-500: var(--red);
+	--color-red-400: var(--red);
+	--color-red-200: var(--red);
+	--color-red-50: var(--red);
 
-  --color-violet-600: var(--violet);
-  --color-violet-500: var(--violet);
-  --color-violet-400: var(--violet);
-  --color-purple-600: var(--violet);
-  --color-purple-500: var(--violet);
-  --color-purple-400: var(--violet);
+	--color-amber-600: var(--amber);
+	--color-amber-500: var(--amber);
+	--color-amber-400: var(--amber);
+	--color-amber-300: var(--amber);
+	--color-amber-50: var(--amber);
 
-  --color-amber-600: var(--amber);
-  --color-amber-500: var(--amber);
-  --color-amber-400: var(--amber);
+	--color-yellow-700: var(--amber);
+	--color-yellow-500: var(--amber);
+	--color-yellow-400: var(--amber);
+	--color-yellow-200: var(--amber);
+	--color-yellow-50: var(--amber);
 
-  --color-yellow-400: var(--amber);
+	--color-blue-600: var(--blue);
+	--color-blue-500: var(--blue);
+	--color-blue-400: var(--blue);
+
+	--color-sky-500: var(--violet);
+	--color-sky-400: var(--violet);
+
+	--color-violet-600: var(--violet);
+	--color-violet-500: var(--violet);
+	--color-violet-400: var(--violet);
+	--color-purple-600: var(--violet);
+	--color-purple-500: var(--violet);
+	--color-purple-400: var(--violet);
+
+	/* Neutral surfaces used by toasts/modals */
+	--color-slate-700: var(--ink-soft);
+	--color-slate-600: var(--ink-soft);
+	--color-slate-500: var(--muted);
+	--color-slate-400: var(--muted);
+	--color-slate-300: var(--muted);
+	--color-slate-200: var(--line);
+	--color-slate-100: var(--line-soft, var(--line));
+	--color-slate-50: var(--panel);
+
+	/* Text on a filled accent surface. Every theme supplies --on-accent with
+	   the correct polarity: a light accent (mint green) needs dark ink, a
+	   dark accent (linear violet) needs light ink. */
+	--color-on-accent: var(--on-accent, #04150b);
+
+	/* Text on a filled GREEN surface. Separate from --on-accent because a
+	   theme's accent and its green can differ in polarity. */
+	--color-on-green: var(--on-green, #04150b);
+
+	/* Text on a filled RED surface (destructive confirm button). */
+	--color-on-red: var(--on-red, #04150b);
+
+	/* Type */
+	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Default theme: Terminal Soft */
+/* Default theme: Studio. ThemeContext repaints these on boot. */
 :root {
-  --bg: #0c0f0c;
-  --bg2: #131713;
-  --panel: #181c18;
-  --ink: #d6e8d6;
-  --ink-soft: #a8c4a8;
-  --muted: #6f8a6f;
-  --line: #243024;
-  --green: #4ade80;
-  --red: #f87171;
-  --blue: #7dd3fc;
-  --violet: #a78bfa;
-  --amber: #fcd34d;
-  --accent: #4ade80;
+	--bg: #0a0b0d;
+	--bg2: #0e1014;
+	--panel: #131519;
+	--line: #1e2128;
+	--line-soft: #1a1d23;
+	--ink: #f0f2f5;
+	--ink-soft: #b7bdc8;
+	--muted: #79818f;
+	--green: #5ce08a;
+	--red: #ff6f7d;
+	--blue: #64b0ff;
+	--violet: #b98cff;
+	--amber: #ffc861;
+	--accent: #5ce08a;
+	--on-accent: #04150b;
 }
 
-body { background: var(--bg); color: var(--ink); }
+body {
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	font-size: 13.5px;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+/* --- Focus: visible on every interactive control, never removed --- */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* --- Selection --- */
+::selection {
+	background: color-mix(in srgb, var(--accent) 30%, transparent);
+	color: var(--ink);
+}
+
+/* --- Scrollbars: present but quiet --- */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--line) transparent;
+}
+*::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+	background: var(--line);
+	border: 3px solid transparent;
+	background-clip: content-box;
+	border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--muted);
+	background-clip: content-box;
+}
 
 @keyframes fade-in-up {
 	0% {
@@ -92,10 +211,9 @@ input[type="range"]::-webkit-slider-thumb {
 	height: 14px;
 	width: 14px;
 	border-radius: 50%;
-	background: #3b82f6;
+	background: var(--accent);
 	margin-top: -5px;
 	cursor: pointer;
-	box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 3. Style the "Track" */
@@ -103,7 +221,7 @@ input[type="range"]::-webkit-slider-runnable-track {
 	width: 100%;
 	height: 4px;
 	cursor: pointer;
-	background: #4b5563;
+	background: var(--line);
 	border-radius: 2px;
 }
 
