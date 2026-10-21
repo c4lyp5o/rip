@@ -26,6 +26,7 @@ const SidebarPanel = ({
 	setIsSettingsModalOpen,
 }) => (
 	<aside
+		aria-label="Sidebar"
 		className="flex flex-col shrink-0 bg-stone-900 border-r border-stone-750 relative"
 		style={{ width: sidebarWidth }}
 	>
@@ -45,16 +46,6 @@ const SidebarPanel = ({
 						: "bg-transparent group-hover:bg-stone-700"
 				}`}
 			/>
-		</div>
-
-		{/* Brand */}
-		<div className="flex items-center gap-2.5 px-3.5 h-12 border-b border-stone-800 shrink-0">
-			<span className="w-[22px] h-[22px] rounded-md bg-emerald-600 flex items-center justify-center text-[12px] font-bold text-on-green shrink-0">
-				R
-			</span>
-			<span className="text-[13.5px] font-semibold text-stone-200 truncate">
-				REST In Peace
-			</span>
 		</div>
 
 		{/* History */}

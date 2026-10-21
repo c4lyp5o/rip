@@ -32,6 +32,8 @@ tagged. No GitHub release exists for them yet.
 - **The response is no longer behind a tab.** Request configuration and the
   response are permanent side-by-side panes, both always visible.
 - The sidebar shows **labelled History and Collections** with no space toggle.
+- The sidebar's **brand header** ("R" badge and "REST In Peace") is gone —
+  the window title already names the app.
 - The composer is the primary surface: method chip, URL field, copy-as-code,
   save and send.
 - Sentence case throughout, an 11px type floor, fewer hairlines, and colour
