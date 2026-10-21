@@ -42,8 +42,8 @@ tagged. No GitHub release exists for them yet.
 - The app's **metadata** is filled out properly: `package.json`,
   `Cargo.toml`, `tauri.conf.json` and the webview shell now carry a
   description, licence, repository, keywords and a real title and favicon.
-- The **app icon** is a new dove mark, regenerated for every platform from
-  `public/icon-source.svg`.
+- The **app icon** is a new `>rip` terminal-prompt mark, regenerated for
+  every platform from `public/icon-source.svg`.
 - The Tauri crate version is `1.0.0`, matching `package.json` and
   `tauri.conf.json`.
 

@@ -1,4 +1,4 @@
-# RIP — REST In Peace 🕊️
+# RIP — REST In Peace
 
 **Version:** 1.0.0 · **License:** MIT · **Platform:** Windows / macOS / Linux
 
