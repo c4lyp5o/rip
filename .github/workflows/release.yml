@@ -53,7 +53,11 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      # Once is enough: the history is the same on every runner, and the
+      # action cannot install gitleaks on Windows (it fetches a .tar.gz that
+      # does not exist for windows_x64 and 404s).
       - name: Sweep the history for credentials
+        if: matrix.platform == 'ubuntu-22.04'
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
