@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-The Studio redesign and the release-readiness work are landed but not yet
-tagged. No GitHub release exists for them yet.
+## [1.0.0] - 2026-10-22
+
+The first public release: the Studio redesign, the release-readiness work,
+and self-update for installed builds.
 
 ### Added
 
