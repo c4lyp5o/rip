@@ -16,12 +16,6 @@ useDefault = true
 [allowlist]
 description = "Verified false positives only."
 
-paths = [
-  # The audit scripts print a response body during a visual check; the
-  # fixtures they use are not credentials.
-  '''scripts/audit/.*''',
-]
-
 regexes = [
   # The dev-preview HTTP stub returns a fictional Stripe payload. The
   # "ch_..." strings are made-up charge ids, not card or token data.

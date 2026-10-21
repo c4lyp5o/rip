@@ -58,8 +58,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
-        with:
-          args: --redact=0 --config .gitleaks.toml --verbose
+          # The action takes no `with:` inputs; it is configured through env.
+          # Findings stay redacted in the log (the default) — this repo is public.
+          GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
@@ -78,3 +79,19 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Portable build: the bare executable, no installer. It runs from any
+      # folder; it needs the WebView2 runtime (built into Windows 10/11) and
+      # keeps its data in %APPDATA%, like the installed app.
+      - name: Upload portable exe
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          exe="src-tauri/target/release/REST In Peace.exe"
+          [ -f "$exe" ] || exe="src-tauri/target/release/rip.exe"
+          portable="REST-In-Peace_${TAG#v}_x64-portable.exe"
+          cp "$exe" "$portable"
+          gh release upload "$TAG" "$portable" --clobber

@@ -47,5 +47,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
-        with:
-          args: --redact=0 --config .gitleaks.toml --verbose
+          # The action takes no `with:` inputs; it is configured through env.
+          # Findings stay redacted in the log (the default) — this repo is public.
+          GITLEAKS_CONFIG: .gitleaks.toml
