@@ -26,6 +26,10 @@ tagged. No GitHub release exists for them yet.
   a **DOM audit** (`scripts/audit/`) that measures rendered text size,
   overflow and WCAG AA contrast across every theme.
 - A **secret-sweep gate** (`.gitleaks.toml`) and a GitHub issue/PR template set.
+- **Self-update** for installed builds: a quiet check on launch, and
+  Settings → Updates to install and restart. Updates come from GitHub
+  Releases and are signature-checked before installing. The portable exe
+  does not self-update.
 
 ### Changed
 

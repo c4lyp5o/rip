@@ -9,6 +9,7 @@ import {
 	updateRequest,
 } from "./utils/ripDb";
 import { isSameRequest } from "./utils/requestNormalization";
+import { checkForUpdate } from "./utils/updater";
 import "./App.css";
 
 import SidebarPanel from "./components/SidebarPanel";
@@ -238,6 +239,25 @@ function App() {
 			document.removeEventListener("click", handleClick);
 		};
 	}, [showSaveMenu, showCodeMenu]);
+
+	// One quiet update check per launch. Offline or a missing release feed is
+	// not the user's problem, so a failure here shows nothing; installing is
+	// left to Settings, where the user chooses when to restart.
+	useEffect(() => {
+		checkForUpdate()
+			.then((update) => {
+				if (update) {
+					showToast(
+						`Version ${update.version} is available — install it from Settings`,
+						"info",
+						6000,
+					);
+				}
+			})
+			.catch((error) => {
+				if (import.meta.env.DEV) console.error("Update check failed:", error);
+			});
+	}, [showToast]);
 
 	useGlobalShortcuts({
 		activeWorkspace,

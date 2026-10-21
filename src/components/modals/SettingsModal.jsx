@@ -1,7 +1,9 @@
-import { Download, Settings, Upload, X, Zap } from "lucide-react";
+import { useState } from "react";
+import { Download, RefreshCw, Settings, Upload, X, Zap } from "lucide-react";
 import { useRip } from "../../context/RIPContext";
 import { useToast } from "../../context/ToastContext";
 import { exportData, importData, setSetting } from "../../utils/ripDb";
+import { checkForUpdate, installUpdate } from "../../utils/updater";
 
 const Kbd = ({ children }) => (
 	<kbd className="bg-stone-850 border border-stone-750 text-stone-300 px-1.5 py-0.5 rounded text-[11px] font-mono">
@@ -12,10 +14,45 @@ const Kbd = ({ children }) => (
 const SettingsModal = ({ setIsSettingsModalOpen }) => {
 	const { state, dispatch, refreshHistory, refreshCollections } = useRip();
 	const { showToast } = useToast();
+	// "idle" | "checking" | "current" | "available" | "installing"
+	const [updateStatus, setUpdateStatus] = useState("idle");
+	const [pendingUpdate, setPendingUpdate] = useState(null);
 
 	if (!state.settingsLoaded) {
 		return null;
 	}
+
+	const handleCheckForUpdate = async () => {
+		setUpdateStatus("checking");
+		try {
+			const update = await checkForUpdate();
+			setPendingUpdate(update);
+			setUpdateStatus(update ? "available" : "current");
+		} catch (error) {
+			if (import.meta.env.DEV) console.error("Update check failed:", error);
+			setUpdateStatus("idle");
+			showToast("Couldn't check for updates", "error");
+		}
+	};
+
+	const handleInstallUpdate = async () => {
+		setUpdateStatus("installing");
+		try {
+			await installUpdate(pendingUpdate);
+		} catch (error) {
+			if (import.meta.env.DEV) console.error("Update install failed:", error);
+			setUpdateStatus("available");
+			showToast("Failed to install the update", "error");
+		}
+	};
+
+	const updateLabel = {
+		idle: "Check for updates",
+		checking: "Checking…",
+		current: "You're up to date",
+		available: `Install ${pendingUpdate?.version} and restart`,
+		installing: "Installing…",
+	}[updateStatus];
 
 	const handleExportData = async () => {
 		try {
@@ -145,6 +182,33 @@ const SettingsModal = ({ setIsSettingsModalOpen }) => {
 							<option value={2000}>Slow 3G (2000ms delay)</option>
 							<option value={5000}>Extremely slow (5000ms delay)</option>
 						</select>
+					</div>
+
+					<div className="pt-5 border-t border-stone-800">
+						<h4 className="text-[13.5px] font-medium text-stone-200 mb-1">
+							Updates
+						</h4>
+						<p className="text-[12.5px] text-stone-500 mb-4">
+							New versions are downloaded from GitHub Releases and verified
+							before installing.
+						</p>
+						<button
+							type="button"
+							onClick={
+								updateStatus === "available"
+									? handleInstallUpdate
+									: handleCheckForUpdate
+							}
+							disabled={
+								updateStatus === "checking" || updateStatus === "installing"
+							}
+							className="flex items-center justify-center gap-2 w-full h-9 bg-stone-850 hover:bg-stone-800 border border-stone-750 text-stone-200 px-4 rounded-md text-[13px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<RefreshCw
+								className={`w-4 h-4 ${updateStatus === "checking" ? "animate-spin" : ""}`}
+							/>
+							{updateLabel}
+						</button>
 					</div>
 
 					<div className="pt-5 border-t border-stone-800">

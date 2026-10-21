@@ -40,6 +40,19 @@
 		"shortDescription": "A native desktop HTTP/REST API client",
 		"longDescription": "REST In Peace is a desktop HTTP/REST API client for sending requests, inspecting responses, and persisting history and collections locally. It sends requests over the network and talks only to web resources — there is no server component of its own, and everything it stores stays on your machine.",
 		"homepage": "https://github.com/c4lyp5o/rip",
-		"license": "MIT"
+		"license": "MIT",
+		"createUpdaterArtifacts": true
+	},
+	"plugins": {
+		"updater": {
+			"requireSignedVersion": true,
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJBNjQ4ODU1ODREMTdEQzkKUldUSmZkR0VWWWhrS3UwM0VKZm1kRDFlRHZtRUQrWTFlZC9TME93ZXUzT0VnRVhBdnA0Q0ZaMDgK",
+			"endpoints": [
+				"https://github.com/c4lyp5o/rip/releases/latest/download/latest.json"
+			],
+			"windows": {
+				"installMode": "passive"
+			}
+		}
 	}
 }
