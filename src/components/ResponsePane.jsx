@@ -33,6 +33,9 @@ const ResponsePane = () => {
 	// normal response made the status bar read "0ms 0KB" next to a failure.
 	const isError = response?.type === "error";
 	const hasMetrics = response && !isError && typeof response.status === "number";
+	// The view toggle is hidden without metrics, so a failed request must
+	// always show its body — otherwise a leftover "headers" view hides the error.
+	const shownView = hasMetrics ? view : "body";
 
 	const handleCopy = async () => {
 		if (!response) return;
@@ -201,7 +204,7 @@ const ResponsePane = () => {
 					</div>
 				)}
 
-				{response && view === "body" && (
+				{response && shownView === "body" && (
 					<>
 						{response.type === "html" && (
 							<iframe
@@ -239,7 +242,7 @@ const ResponsePane = () => {
 					</>
 				)}
 
-				{response && view === "headers" && (
+				{response && shownView === "headers" && (
 					<div className="w-full overflow-x-auto pb-4">
 						<table className="w-full text-left border-collapse text-[12.5px]">
 							<thead>
