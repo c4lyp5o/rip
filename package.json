@@ -2,7 +2,7 @@
   "name": "rip",
   "private": true,
   "version": "1.0.0",
-  "description": "REST In Peace â€” a native desktop HTTP/REST API client. Send requests, inspect responses, keep history and collections, all stored locally in SQLite.",
+  "description": "REST In Peace — a native desktop HTTP/REST API client. Send requests, inspect responses, keep history and collections, all stored locally in SQLite.",
   "type": "module",
   "author": {
     "name": "Calypso",
