@@ -18,7 +18,9 @@ vi.mock("../../utils/ripDb", () => {
 		clearHistory: async () => {},
 		getSetting: async () => null,
 		setSetting: async () => {},
-		getCollectionsTree: stub,
+		getCollectionsTree: async () => [
+			{ id: "c1", name: "Inbox", folders: [], requests: [] },
+		],
 		createCollection: async () => {},
 		deleteCollection: async () => {},
 		renameCollection: async () => {},
@@ -100,5 +102,28 @@ describe("ResponsePane status bar", () => {
 		render(wrap(<ResponsePane />));
 
 		expect(screen.getByText("No response yet")).toBeInTheDocument();
+	});
+});
+
+describe("Save menu on an already-saved request", () => {
+	it("still opens from the chevron so it can be saved elsewhere", async () => {
+		render(wrap(<StatefulRequestBar />));
+
+		fireEvent.change(screen.getByLabelText("Request URL"), {
+			target: { value: "https://api.example.com/v1/endpoint" },
+		});
+
+		// First save: the chevron opens the menu, pick the collection.
+		fireEvent.click(screen.getByLabelText("Save options"));
+		fireEvent.click(await screen.findByText("Inbox"));
+		await screen.findByText("Saved");
+
+		// Once saved, the main button only updates; the chevron must still
+		// offer the menu, including the other collections.
+		fireEvent.click(screen.getByLabelText("Save options"));
+		expect(
+			await screen.findByText("Update saved request"),
+		).toBeInTheDocument();
+		expect(screen.getByText("Inbox")).toBeInTheDocument();
 	});
 });

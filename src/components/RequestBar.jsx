@@ -195,39 +195,63 @@ const RequestBar = ({
 					)}
 				</div>
 
-				{/* Save */}
+				{/* Save — split button: the main half saves (or updates), the
+				    chevron always opens the menu so a saved request can still be
+				    saved into another collection. */}
 				<div className="relative shrink-0">
-					<button
-						type="button"
-						onClick={() => {
-							if (activeWorkspace.savedRequestId) {
-								updateRequest(activeWorkspace);
-								setShowSaveMenu(false);
-							} else {
-								setShowSaveMenu(!showSaveMenu);
+					<div className="h-10 flex items-stretch rounded-lg bg-stone-900 border border-stone-750 transition-colors hover:border-stone-700">
+						<button
+							type="button"
+							onClick={() => {
+								if (activeWorkspace.savedRequestId) {
+									updateRequest(activeWorkspace);
+									setShowSaveMenu(false);
+								} else {
+									setShowSaveMenu(!showSaveMenu);
+								}
+							}}
+							disabled={!activeWorkspace.url}
+							className="w-10 flex items-center justify-center rounded-l-lg bg-transparent text-stone-300 transition-colors hover:text-stone-100 disabled:opacity-30 disabled:cursor-not-allowed"
+							title={
+								activeWorkspace.savedRequestId ? "Update Request" : "Save Request"
 							}
-						}}
-						disabled={!activeWorkspace.url}
-						className="h-10 w-10 flex items-center justify-center rounded-lg bg-stone-900 border border-stone-750 text-stone-300 transition-colors hover:text-stone-100 hover:border-stone-700 disabled:opacity-30 disabled:cursor-not-allowed"
-						title={
-							activeWorkspace.savedRequestId ? "Update Request" : "Save Request"
-						}
-						aria-label="Save request"
-					>
-						<svg
-							className="w-4 h-4"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
+							aria-label="Save request"
 						>
-							<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-							<polyline points="17 21 17 13 7 13 7 21" />
-							<polyline points="7 3 7 8 15 8" />
-						</svg>
-					</button>
+							<svg
+								className="w-4 h-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							>
+								<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+								<polyline points="17 21 17 13 7 13 7 21" />
+								<polyline points="7 3 7 8 15 8" />
+							</svg>
+						</button>
+						<button
+							type="button"
+							onClick={() => setShowSaveMenu(!showSaveMenu)}
+							disabled={!activeWorkspace.url}
+							className="w-6 flex items-center justify-center rounded-r-lg border-l border-stone-750 bg-transparent text-stone-400 transition-colors hover:text-stone-100 disabled:opacity-30 disabled:cursor-not-allowed"
+							title="Save to collection…"
+							aria-label="Save options"
+							aria-haspopup="menu"
+							aria-expanded={showSaveMenu}
+						>
+							<svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+								<path
+									d="M3 4.5 6 7.5 9 4.5"
+									stroke="currentColor"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+						</button>
+					</div>
 
 					{showSaveMenu && (
 						<div className="absolute right-0 top-full mt-1.5 w-60 rounded-lg border border-stone-750 bg-stone-900 p-1 z-50 shadow-xl">
