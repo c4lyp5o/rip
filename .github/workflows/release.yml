@@ -9,12 +9,17 @@ on:
       tag:
         description: "Tag to release (e.g. v1.0.0)"
         required: true
+      android_only:
+        description: "Only build Android and upload it to the tag's existing release"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
   build:
+    if: ${{ !inputs.android_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -108,12 +113,19 @@ jobs:
   # Android: a universal APK for sideloading and an AAB for the Play Store,
   # both signed with the upload key. Runs after the desktop matrix so the
   # draft release it uploads to already exists.
+  #
+  # With android_only, the desktop matrix is skipped and this job builds the
+  # tag's code on its own: a way to redo a failed Android build without
+  # rebuilding (and re-uploading) every desktop installer.
   android:
     needs: build
+    if: ${{ !cancelled() && (needs.build.result == 'success' || (inputs.android_only && needs.build.result == 'skipped')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -123,6 +135,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the legacy "tools" package, which the
+          # SDK repository no longer serves, and the step fails on it.
+          packages: platform-tools
 
       - name: Install the NDK
         run: |
