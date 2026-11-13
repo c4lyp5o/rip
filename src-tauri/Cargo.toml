@@ -1,6 +1,6 @@
 [package]
 name = "rip"
-version = "1.0.0"
+version = "1.1.0"
 description = "REST In Peace — a native desktop HTTP/REST API client for sending requests, inspecting responses, and keeping history and collections locally."
 authors = ["Calypso <calypso@calypsocloud.one>"]
 edition = "2021"
