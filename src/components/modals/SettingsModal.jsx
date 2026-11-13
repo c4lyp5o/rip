@@ -4,6 +4,8 @@ import { useRip } from "../../context/RIPContext";
 import { useToast } from "../../context/ToastContext";
 import { exportData, importData, setSetting } from "../../utils/ripDb";
 import { checkForUpdate, installUpdate } from "../../utils/updater";
+import { isMobile } from "../../utils/platform";
+import { saveBlob } from "../../utils/saveFile";
 
 const Kbd = ({ children }) => (
 	<kbd className="bg-stone-850 border border-stone-750 text-stone-300 px-1.5 py-0.5 rounded text-[11px] font-mono">
@@ -60,13 +62,11 @@ const SettingsModal = ({ setIsSettingsModalOpen }) => {
 			const blob = new Blob([JSON.stringify(data, null, 2)], {
 				type: "application/json",
 			});
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `rip-backup-${new Date().toISOString().slice(0, 10)}.json`;
-			a.click();
-			URL.revokeObjectURL(url);
-			showToast(`Backup file downloaded as ${a.download}!`, "success");
+			const saved = await saveBlob(
+				blob,
+				`rip-backup-${new Date().toISOString().slice(0, 10)}.json`,
+			);
+			if (saved) showToast(`Backup file downloaded as ${saved}!`, "success");
 		} catch (error) {
 			if (import.meta.env.DEV) console.error("Failed to export data:", error);
 			showToast("Failed to export data", "error");
@@ -184,6 +184,7 @@ const SettingsModal = ({ setIsSettingsModalOpen }) => {
 						</select>
 					</div>
 
+					{!isMobile() && (
 					<div className="pt-5 border-t border-stone-800">
 						<h4 className="text-[13.5px] font-medium text-stone-200 mb-1">
 							Updates
@@ -210,6 +211,7 @@ const SettingsModal = ({ setIsSettingsModalOpen }) => {
 							{updateLabel}
 						</button>
 					</div>
+					)}
 
 					<div className="pt-5 border-t border-stone-800">
 						<h4 className="text-[13.5px] font-medium text-stone-200 mb-4">

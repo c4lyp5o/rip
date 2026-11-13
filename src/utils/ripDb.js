@@ -62,9 +62,25 @@ const migrateLegacyHeaderQueryFormats = async (database) => {
 	}
 };
 
-export const initDb = async () => {
-	if (db) return db;
+// Startup calls initDb from several places at once (settings, history,
+// collections). Caching the promise, not the handle, makes them all wait on
+// ONE initialisation: caching only the handle let each early caller open its
+// own pool and run the PRAGMAs and DDL concurrently, which SQLite rejects
+// with "database is locked" — reliably so on Android's slower storage.
+let initPromise = null;
 
+export const initDb = () => {
+	if (!initPromise) {
+		initPromise = openDb().catch((error) => {
+			// A failed open must not poison every later call.
+			initPromise = null;
+			throw error;
+		});
+	}
+	return initPromise;
+};
+
+const openDb = async () => {
 	db = await Database.load("sqlite:history6.db");
 
 	await db.execute("PRAGMA foreign_keys = ON;");

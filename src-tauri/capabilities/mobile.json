@@ -1,0 +1,8 @@
+{
+	"$schema": "../gen/schemas/mobile-schema.json",
+	"identifier": "mobile-capability",
+	"description": "Saving files on Android, where the webview ignores <a download>: a system save dialog, then a write to the location the user picked",
+	"platforms": ["android", "iOS"],
+	"windows": ["main"],
+	"permissions": ["dialog:allow-save", "fs:allow-write-file"]
+}

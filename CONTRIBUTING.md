@@ -77,6 +77,37 @@ bun run preview:web   # http://localhost:4340
 This is a **development aid only**. The production build never loads the
 stub, and it must never be committed into the app's data path.
 
+## Android
+
+You need a JDK 17+, the Android SDK (platform 36+), the NDK
+(`ndk;27.2.12479018`) and the Rust Android targets:
+
+```bash
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+```
+
+Point `JAVA_HOME`, `ANDROID_HOME` and `NDK_HOME` at them, then:
+
+```bash
+bun run tauri android dev                 # emulator or USB device
+bun run tauri android build --apk --aab   # release builds
+```
+
+The Android project lives in `src-tauri/gen/android` and is committed: the
+theme, `MainActivity.kt` (system-bar insets) and the signing block in
+`app/build.gradle.kts` are hand-edited, so do not regenerate it with
+`tauri android init` without carrying those over.
+
+- **Windows:** the CLI symlinks the Rust library into `jniLibs`, which needs
+  [Developer Mode](https://learn.microsoft.com/windows/apps/get-started/enable-your-device-for-development)
+  (or `SeCreateSymbolicLinkPrivilege`).
+- **Signing:** release builds are signed when `RIP_KEYSTORE_PROPERTIES`
+  points at a properties file (or `src-tauri/gen/android/keystore.properties`
+  exists, git-ignored) naming `storeFile`, `storePassword`, `keyAlias` and
+  `keyPassword`. Without one they come out unsigned. CI reads the
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
+  and `ANDROID_KEY_PASSWORD` secrets.
+
 ## The visual audit
 
 `scripts/audit/` measures what actually renders — text size, overflow, and

@@ -1,5 +1,6 @@
 import { Download, FileBox, HardDrive } from "lucide-react";
 import { useToast } from "../context/ToastContext";
+import { saveBlob } from "../utils/saveFile";
 
 const BlobViewer = ({ blob, contentType, filename }) => {
 	const { showToast } = useToast();
@@ -12,22 +13,18 @@ const BlobViewer = ({ blob, contentType, filename }) => {
 		return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 	};
 
-	const handleDownload = () => {
+	const handleDownload = async () => {
 		if (!blob) return;
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		if (filename) {
-			a.download = `${filename}`;
-		} else {
-			const extension = contentType.split("/")[1] || "bin";
-			a.download = `rip-${crypto.randomUUID().replace(/-/g, "")}.${extension}`;
+		const extension = contentType.split("/")[1] || "bin";
+		const name =
+			filename || `rip-${crypto.randomUUID().replace(/-/g, "")}.${extension}`;
+		try {
+			const saved = await saveBlob(blob, name);
+			if (saved) showToast(`File downloaded successfully as ${saved}!`);
+		} catch (error) {
+			if (import.meta.env.DEV) console.error("Failed to save file:", error);
+			showToast("Failed to save the file", "error");
 		}
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
-		showToast(`File downloaded successfully as ${a.download}!`);
 	};
 
 	if (!blob) return null;

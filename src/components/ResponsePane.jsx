@@ -61,8 +61,9 @@ const ResponsePane = () => {
 			aria-label="Response"
 		>
 			{/* Status bar: what came back, in plain numbers */}
-			<div className="shrink-0 flex items-center gap-3 h-10 px-4 border-b border-stone-750 bg-stone-900">
-				<h2 className="text-[12.5px] font-semibold text-stone-400 mr-1">
+			<div className="shrink-0 flex items-center gap-2 md:gap-3 h-10 px-3 md:px-4 border-b border-stone-750 bg-stone-900 whitespace-nowrap">
+				{/* On compact screens the Request/Response switch already names this pane. */}
+				<h2 className="max-md:hidden text-[12.5px] font-semibold text-stone-400 mr-1">
 					Response
 				</h2>
 

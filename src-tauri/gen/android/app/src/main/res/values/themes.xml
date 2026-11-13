@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. RIP's default theme (Studio) is dark, so the
+         system bars get light icons and the window paints the app background
+         before the webview loads, instead of flashing white. -->
+    <style name="Theme.rip" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/rip_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

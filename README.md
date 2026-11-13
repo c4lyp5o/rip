@@ -100,6 +100,24 @@ bun run tauri build
 
 The installers land in `src-tauri/target/release/bundle/`.
 
+### Android
+
+Each release also ships a signed universal **APK** to sideload and an **AAB**
+for the Play Store. On a phone the sidebar becomes a drawer and the request
+and response share the screen through a Request/Response switch; tablets keep
+the side-by-side layout. Android builds update through the Play Store or a
+new APK, not the in-app updater. See [CONTRIBUTING.md](CONTRIBUTING.md#android)
+to build one yourself.
+
+### Android
+
+Each release also ships a signed universal **APK** to sideload and an **AAB**
+for the Play Store. On a phone the sidebar becomes a drawer and the request
+and response share the screen through a Request/Response switch; tablets keep
+the side-by-side layout. Android builds update through the Play Store or a
+new APK, not the in-app updater. See [CONTRIBUTING.md](CONTRIBUTING.md#android)
+to build one yourself.
+
 ---
 
 ## Scripts

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Android build.** Releases now include a signed universal APK and an AAB
+  for the Play Store.
+- **Compact layout** below 768px: the sidebar becomes a drawer, the composer
+  wraps the URL onto its own row, and a Request/Response switch shows one
+  pane at a time, flipping to the response when a request is sent.
+
+### Fixed
+
+- Startup could fail with "database is locked" when several parts of the app
+  opened the database at once; initialisation now runs exactly once. Seen on
+  Android, latent on desktop.
+- Downloading a binary response or exporting a backup on Android wrote
+  nothing; it now goes through the system save dialog.
+
 ## [1.0.0] - 2026-10-22
 
 The first public release: the Studio redesign, the release-readiness work,
