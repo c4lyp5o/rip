@@ -96,9 +96,17 @@ bun run tauri android build --apk --aab   # release builds
 ```
 
 The Android project lives in `src-tauri/gen/android` and is committed: the
-theme, `MainActivity.kt` (system-bar insets) and the signing block in
-`app/build.gradle.kts` are hand-edited, so do not regenerate it with
-`tauri android init` without carrying those over.
+theme, `MainActivity.kt` (system-bar insets), the signing block in
+`app/build.gradle.kts` and the launcher icon are hand-edited, so do not
+regenerate it with `tauri android init` without carrying those over.
+
+The launcher icon is an adaptive icon: `res/drawable/ic_launcher_foreground.xml`
+is the `>rip` path from `public/icon-source.svg` as a vector, scaled to 0.70 so
+no launcher mask clips it, on `#0C0C0C`, with a monochrome layer for themed
+icons. `tauri icon` generates its own Android icons (a full-bleed foreground
+on a white background) and can copy them into this project, so after running
+it, check `git status` and restore these with
+`git checkout -- src-tauri/gen/android/app/src/main/res` if they changed.
 
 - **Windows:** the CLI symlinks the Rust library into `jniLibs`, which needs
   [Developer Mode](https://learn.microsoft.com/windows/apps/get-started/enable-your-device-for-development)
