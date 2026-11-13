@@ -54,7 +54,7 @@ const RequestPane = () => {
 				aria-label="Request sections"
 				className="shrink-0 flex items-center gap-1 h-10 px-4 border-b border-stone-750"
 			>
-				<span className="text-[12.5px] font-semibold text-stone-400 mr-1.5">
+				<span className="max-md:hidden text-[12.5px] font-semibold text-stone-400 mr-1.5">
 					Request
 				</span>
 

@@ -24,14 +24,20 @@ const SidebarPanel = ({
 	isDraggingSidebar,
 	setIsDraggingSidebar,
 	setIsSettingsModalOpen,
+	isDrawer = false,
 }) => (
 	<aside
 		aria-label="Sidebar"
-		className="flex flex-col shrink-0 bg-stone-900 border-r border-stone-750 relative"
-		style={{ width: sidebarWidth }}
+		className={`flex flex-col shrink-0 bg-stone-900 border-r border-stone-750 ${
+			isDrawer
+				? "fixed inset-y-0 left-0 z-90 shadow-2xl safe-area-pad"
+				: "relative"
+		}`}
+		style={{ width: isDrawer ? "min(85vw, 320px)" : sidebarWidth }}
 	>
 		{/* Resize handle — sits INSIDE the rail so it cannot push the layout
-		    wider than the sidebar's own width. */}
+		    wider than the sidebar's own width. A drawer has a fixed width. */}
+		{!isDrawer && (
 		<div
 			onMouseDown={() => setIsDraggingSidebar(true)}
 			className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-50 group flex justify-center"
@@ -47,6 +53,7 @@ const SidebarPanel = ({
 				}`}
 			/>
 		</div>
+		)}
 
 		{/* History */}
 		<section className="flex flex-col min-h-0 flex-1 border-b border-stone-800">

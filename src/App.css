@@ -144,6 +144,13 @@ body {
 	text-rendering: optimizeLegibility;
 }
 
+/* --- Safe areas: Android 15+ draws the app edge to edge, under the status
+   and navigation bars. These insets are 0 on desktop. --- */
+.safe-area-pad {
+	padding: env(safe-area-inset-top) env(safe-area-inset-right)
+		env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 /* --- Focus: visible on every interactive control, never removed --- */
 :focus-visible {
 	outline: 2px solid var(--accent);

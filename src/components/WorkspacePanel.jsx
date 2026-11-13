@@ -1,4 +1,5 @@
-import { Plus, Zap } from "lucide-react";
+import { useState } from "react";
+import { Menu, Plus, Zap } from "lucide-react";
 import RequestBar from "./RequestBar";
 import RequestPane from "./RequestPane";
 import ResponsePane from "./ResponsePane";
@@ -26,10 +27,35 @@ const WorkspacePanel = ({
 	setShowCodeMenu,
 	setIsCreateModalOpen,
 	dispatch,
+	isCompact = false,
+	onOpenSidebar,
 }) => {
+	// Compact layout shows one pane at a time. Sending flips to the response,
+	// adjusted during render (not in an effect) so there is no flash of the
+	// request pane after the click.
+	const [compactPane, setCompactPane] = useState("request");
+	const isFetching = activeWorkspace?.isFetching ?? false;
+	const [wasFetching, setWasFetching] = useState(isFetching);
+	if (isFetching !== wasFetching) {
+		setWasFetching(isFetching);
+		if (isFetching) setCompactPane("response");
+	}
+
+	const menuButton = isCompact && (
+		<button
+			type="button"
+			onClick={onOpenSidebar}
+			className="px-3 h-10 flex items-center justify-center text-stone-400 hover:text-stone-200 shrink-0 bg-transparent border-0 cursor-pointer"
+			aria-label="Open sidebar"
+		>
+			<Menu className="w-5 h-5" />
+		</button>
+	);
+
 	if (!workspaceTabs || !activeWorkspace) {
 		return (
-			<div className="flex-1 flex flex-col items-center justify-center h-full p-6 text-center">
+			<div className="flex-1 flex flex-col items-center justify-center h-full p-6 text-center relative">
+				{menuButton && <div className="absolute top-0 left-0">{menuButton}</div>}
 				<div className="mb-6 opacity-20">
 					<svg
 						width="120"
@@ -66,6 +92,7 @@ const WorkspacePanel = ({
 		<div className="flex-1 flex flex-col min-w-0 min-h-0 bg-stone-950">
 			{/* Open request tabs */}
 			<div className="shrink-0 flex items-center bg-stone-900 border-b border-stone-750">
+				{menuButton}
 				<div
 					className="flex overflow-x-auto no-scrollbar scroll-smooth"
 					onWheel={(e) => {
@@ -138,14 +165,48 @@ const WorkspacePanel = ({
 				setIsCreateModalOpen={setIsCreateModalOpen}
 			/>
 
-			{/* Request on the left, response on the right. Always both. */}
-			<div className="flex-1 flex min-h-0 min-w-0">
-				<RequestPane />
+			{isCompact ? (
+				/* Too narrow for both: one pane at a time, with a switch. */
+				<>
+					<div
+						className="shrink-0 flex gap-1 p-1.5 bg-stone-900 border-b border-stone-750"
+						role="tablist"
+						aria-label="Pane"
+					>
+						{[
+							["request", "Request"],
+							["response", "Response"],
+						].map(([id, label]) => (
+							<button
+								key={id}
+								type="button"
+								role="tab"
+								aria-selected={compactPane === id}
+								onClick={() => setCompactPane(id)}
+								className={`flex-1 h-8 rounded-md text-[13px] font-medium border-0 cursor-pointer transition-colors ${
+									compactPane === id
+										? "bg-stone-800 text-stone-100"
+										: "bg-transparent text-stone-500"
+								}`}
+							>
+								{label}
+							</button>
+						))}
+					</div>
+					<div className="flex-1 flex flex-col min-h-0 min-w-0">
+						{compactPane === "request" ? <RequestPane /> : <ResponsePane />}
+					</div>
+				</>
+			) : (
+				/* Request on the left, response on the right. Always both. */
+				<div className="flex-1 flex min-h-0 min-w-0">
+					<RequestPane />
 
-				<div className="flex-1 flex flex-col min-w-0 min-h-0 border-l border-stone-750">
-					<ResponsePane />
+					<div className="flex-1 flex flex-col min-w-0 min-h-0 border-l border-stone-750">
+						<ResponsePane />
+					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	);
 };

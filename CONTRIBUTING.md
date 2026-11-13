@@ -51,7 +51,9 @@ failure there.
 
 - **The response pane is not a tab.** Request and response are permanent
   side-by-side panes. If you find yourself adding a "response" tab, you have
-  misunderstood the design.
+  misunderstood the design. The one exception is the compact layout below
+  768px (`src/hooks/useIsCompact.js`), where a phone cannot fit both: a
+  Request/Response switch shows one and flips to the response on send.
 - **Method and status colour is centralised** in `src/utils/semantics.js`.
   Do not hard-code a colour in a component.
 - **The app state lives in `src/context/RIPContext.jsx`.** Components read it
@@ -76,6 +78,67 @@ bun run preview:web   # http://localhost:4340
 
 This is a **development aid only**. The production build never loads the
 stub, and it must never be committed into the app's data path.
+
+## Android
+
+You need a JDK 17+, the Android SDK (platform 36+), the NDK
+(`ndk;27.2.12479018`) and the Rust Android targets:
+
+```bash
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+```
+
+Point `JAVA_HOME`, `ANDROID_HOME` and `NDK_HOME` at them, then:
+
+```bash
+bun run tauri android dev                 # emulator or USB device
+bun run tauri android build --apk --aab   # release builds
+```
+
+The Android project lives in `src-tauri/gen/android` and is committed: the
+theme, `MainActivity.kt` (system-bar insets), the signing block in
+`app/build.gradle.kts` and the launcher icon are hand-edited, so do not
+regenerate it with `tauri android init` without carrying those over.
+
+The launcher icon is an adaptive icon: `res/drawable/ic_launcher_foreground.xml`
+is the `>rip` path from `public/icon-source.svg` as a vector, scaled to 0.70 so
+no launcher mask clips it, on `#0C0C0C`, with a monochrome layer for themed
+icons. `tauri icon` generates its own Android icons (a full-bleed foreground
+on a white background) and can copy them into this project, so after running
+it, check `git status` and restore these with
+`git checkout -- src-tauri/gen/android/app/src/main/res` if they changed.
+
+- **Windows:** the CLI symlinks the Rust library into `jniLibs`, which needs
+  [Developer Mode](https://learn.microsoft.com/windows/apps/get-started/enable-your-device-for-development)
+  (or `SeCreateSymbolicLinkPrivilege`).
+- **Signing:** release builds are signed when `RIP_KEYSTORE_PROPERTIES`
+  points at a properties file (or `src-tauri/gen/android/keystore.properties`
+  exists, git-ignored) naming `storeFile`, `storePassword`, `keyAlias` and
+  `keyPassword`. Without one they come out unsigned. CI reads the
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
+  and `ANDROID_KEY_PASSWORD` secrets.
+- **Testing on a phone:** turn on *Wireless debugging* in Developer options,
+  choose *Pair device with pairing code*, then
+  `adb pair <ip>:<pair-port> <code>` and `adb connect <ip>:<port>` (the
+  connect port is the one shown on the Wireless debugging screen, not the
+  pairing one). Install with `adb install -r <apk>`. A phone with an arm64
+  CPU needs the `aarch64` build.
+- **Android-only code paths** are behind `isMobile()` in
+  `src/utils/platform.js`: file saving (`src/utils/saveFile.js`) and hiding
+  the self-updater.
+
+## Versioning and releases
+
+The version lives in three files that must match: `package.json`,
+`src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (plus the badge at the
+top of the README). Bump all of them together, move the CHANGELOG's
+`[Unreleased]` entries under the new version, and push a `v<version>` tag to
+run the release workflow.
+
+Android derives its `versionCode` from that version
+(`major × 1,000,000 + minor × 1,000 + patch`, so `1.1.0` is `1001000`). The
+Play Store rejects an upload whose `versionCode` is not higher than the last
+one, so never reuse or lower a version that has been uploaded.
 
 ## The visual audit
 

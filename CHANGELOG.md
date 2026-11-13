@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-13
+
+### Added
+
+- **Android build.** Releases now include a signed universal APK and an AAB
+  for the Play Store.
+- **Compact layout** below 768px: the sidebar becomes a drawer, the composer
+  wraps the URL onto its own row, and a Request/Response switch shows one
+  pane at a time, flipping to the response when a request is sent.
+- The Android launcher icon is the `>rip` mark, as an adaptive icon with a
+  monochrome layer for themed icons.
+
+### Changed
+
+- The default `User-Agent` of a new request follows the app version
+  (`RIP/1.1.0 (REST In Peace Client)`) instead of a fixed `RIP/1.0`. Saved
+  requests keep the header they were stored with.
+- Dependencies updated within their ranges; `tauri-plugin-http` moves to 2.9
+  on both the Rust and the JavaScript side.
+
+### Fixed
+
+- Startup could fail with "database is locked" when several parts of the app
+  opened the database at once; initialisation now runs exactly once. Seen on
+  Android, latent on desktop.
+- Downloading a binary response or exporting a backup on Android wrote
+  nothing; it now goes through the system save dialog.
+
 ## [1.0.0] - 2026-10-22
 
 The first public release: the Studio redesign, the release-readiness work,

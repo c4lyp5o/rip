@@ -20,6 +20,7 @@ import SettingsModal from "./components/modals/SettingsModal";
 import useSidebarResize from "./hooks/useSidebarResize";
 import useGlobalShortcuts from "./hooks/useGlobalShortcuts";
 import useUpdateRequest from "./hooks/useUpdateRequest";
+import useIsCompact from "./hooks/useIsCompact";
 
 /**
  * The app shell: sidebar on the left, workspace on the right.
@@ -46,7 +47,9 @@ function App() {
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
-	// sidebar
+	// sidebar — a resizable rail, or a drawer on compact (phone) screens
+	const isCompact = useIsCompact();
+	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const sidebarWidth = state.sidebarWidth ?? 224;
 	const { isDraggingSidebar, setIsDraggingSidebar } = useSidebarResize(
 		sidebarWidth,
@@ -279,14 +282,29 @@ function App() {
 	}
 
 	return (
-		<div className="flex h-screen w-full bg-stone-950 text-stone-100 font-sans overflow-hidden">
-			{/* 1. SIDEBAR */}
+		<div className="flex h-dvh w-full bg-stone-950 text-stone-100 font-sans overflow-hidden safe-area-pad">
+			{/* 1. SIDEBAR — on compact screens, a drawer over a backdrop */}
+			{isCompact && isDrawerOpen && (
+				<div
+					className="fixed inset-0 z-80 bg-black/50"
+					onClick={() => setIsDrawerOpen(false)}
+					aria-hidden="true"
+				/>
+			)}
+			{(!isCompact || isDrawerOpen) && (
 			<SidebarPanel
+				isDrawer={isCompact}
 				sidebarWidth={sidebarWidth}
 				history={history}
 				collections={collections}
-				handleLoadHistoryItemById={handleLoadHistoryItemById}
-				handleLoadRequest={handleLoadRequest}
+				handleLoadHistoryItemById={(id) => {
+					handleLoadHistoryItemById(id);
+					setIsDrawerOpen(false);
+				}}
+				handleLoadRequest={(item) => {
+					handleLoadRequest(item);
+					setIsDrawerOpen(false);
+				}}
 				confirmClearHistory={confirmClearHistory}
 				confirmDeleteHistoryItem={confirmDeleteHistoryItem}
 				confirmDeleteCollection={confirmDeleteCollection}
@@ -296,6 +314,7 @@ function App() {
 				setIsDraggingSidebar={setIsDraggingSidebar}
 				setIsSettingsModalOpen={setIsSettingsModalOpen}
 			/>
+			)}
 
 			{/* 2. WORKSPACE */}
 			<WorkspacePanel
@@ -311,6 +330,8 @@ function App() {
 				setShowCodeMenu={setShowCodeMenu}
 				setIsCreateModalOpen={setIsCreateModalOpen}
 				dispatch={dispatch}
+				isCompact={isCompact}
+				onOpenSidebar={() => setIsDrawerOpen(true)}
 			/>
 
 			{/* 3. MODALS */}

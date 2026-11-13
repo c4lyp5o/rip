@@ -91,8 +91,10 @@ const RequestBar = ({
 	};
 
 	return (
-		<div className="shrink-0 px-5 pt-4 pb-3.5 bg-stone-950 border-b border-stone-750">
-			<div className="flex items-center gap-2.5">
+		<div className="shrink-0 px-3 md:px-5 pt-3 md:pt-4 pb-3.5 bg-stone-950 border-b border-stone-750">
+			{/* Narrow screens wrap: the URL takes the whole first row and the
+			    method and actions sit beneath it. */}
+			<div className="flex flex-wrap md:flex-nowrap items-center gap-2.5">
 				{/* Method — a coloured chip, not a plain select */}
 				<div className="relative shrink-0">
 					<select
@@ -135,7 +137,7 @@ const RequestBar = ({
 				</div>
 
 				{/* URL — the hero input */}
-				<div className="flex-1 min-w-0 flex items-center h-10 px-3.5 rounded-lg bg-stone-900 border border-stone-750 transition-colors focus-within:border-emerald-500">
+				<div className="flex-1 max-md:basis-full max-md:order-first min-w-0 flex items-center h-10 px-3.5 rounded-lg bg-stone-900 border border-stone-750 transition-colors focus-within:border-emerald-500">
 					<input
 						type="text"
 						value={activeWorkspace.url}
@@ -329,7 +331,7 @@ const RequestBar = ({
 					type="button"
 					onClick={() => sendRequest()}
 					disabled={!activeWorkspace.url || isFetching}
-					className="h-10 shrink-0 px-5 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-on-green text-[13px] font-semibold transition-all hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+					className="h-10 shrink-0 px-5 max-md:ml-auto flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-on-green text-[13px] font-semibold transition-all hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
 					title="Send request (Ctrl+Enter)"
 				>
 					{isFetching ? (

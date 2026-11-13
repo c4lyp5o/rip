@@ -1,6 +1,6 @@
 [package]
 name = "rip"
-version = "1.0.0"
+version = "1.1.0"
 description = "REST In Peace — a native desktop HTTP/REST API client for sending requests, inspecting responses, and keeping history and collections locally."
 authors = ["Calypso <calypso@calypsocloud.one>"]
 edition = "2021"
@@ -29,6 +29,8 @@ serde_json = "1"
 tauri-plugin-http = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-process = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

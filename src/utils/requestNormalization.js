@@ -1,4 +1,5 @@
 import { safeParseJson } from "./parser";
+import { DEFAULT_USER_AGENT } from "./userAgent";
 
 const normalizeHeadersFromObject = (raw) =>
 	Object.keys(raw).map((key) => ({
@@ -50,7 +51,7 @@ export const normalizeHeaders = (raw) => {
 		{
 			id: crypto.randomUUID(),
 			key: "User-Agent",
-			value: `RIP/1.0 (REST In Peace Client)`,
+			value: DEFAULT_USER_AGENT,
 			active: true,
 		},
 	];
