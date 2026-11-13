@@ -16,6 +16,7 @@ import {
 	getSetting,
 } from "../utils/ripDb";
 import { normalizeHeaders, normalizeQueries } from "../utils/requestNormalization";
+import { DEFAULT_USER_AGENT } from "../utils/userAgent";
 
 const RipContext = createContext(null);
 const RipStateContext = createContext(null);
@@ -35,7 +36,7 @@ const defaultWorkspaceTabTemplate = {
 		{ key: "Accept", value: "application/json", active: true },
 		{
 			key: "User-Agent",
-			value: `RIP/1.0 (REST In Peace Client)`,
+			value: DEFAULT_USER_AGENT,
 			active: true,
 		},
 	],
