@@ -51,7 +51,9 @@ failure there.
 
 - **The response pane is not a tab.** Request and response are permanent
   side-by-side panes. If you find yourself adding a "response" tab, you have
-  misunderstood the design.
+  misunderstood the design. The one exception is the compact layout below
+  768px (`src/hooks/useIsCompact.js`), where a phone cannot fit both: a
+  Request/Response switch shows one and flips to the response on send.
 - **Method and status colour is centralised** in `src/utils/semantics.js`.
   Do not hard-code a colour in a component.
 - **The app state lives in `src/context/RIPContext.jsx`.** Components read it
@@ -107,6 +109,28 @@ theme, `MainActivity.kt` (system-bar insets) and the signing block in
   `keyPassword`. Without one they come out unsigned. CI reads the
   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
   and `ANDROID_KEY_PASSWORD` secrets.
+- **Testing on a phone:** turn on *Wireless debugging* in Developer options,
+  choose *Pair device with pairing code*, then
+  `adb pair <ip>:<pair-port> <code>` and `adb connect <ip>:<port>` (the
+  connect port is the one shown on the Wireless debugging screen, not the
+  pairing one). Install with `adb install -r <apk>`. A phone with an arm64
+  CPU needs the `aarch64` build.
+- **Android-only code paths** are behind `isMobile()` in
+  `src/utils/platform.js`: file saving (`src/utils/saveFile.js`) and hiding
+  the self-updater.
+
+## Versioning and releases
+
+The version lives in three files that must match: `package.json`,
+`src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (plus the badge at the
+top of the README). Bump all of them together, move the CHANGELOG's
+`[Unreleased]` entries under the new version, and push a `v<version>` tag to
+run the release workflow.
+
+Android derives its `versionCode` from that version
+(`major × 1,000,000 + minor × 1,000 + patch`, so `1.1.0` is `1001000`). The
+Play Store rejects an upload whose `versionCode` is not higher than the last
+one, so never reuse or lower a version that has been uploaded.
 
 ## The visual audit
 
