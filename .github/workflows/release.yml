@@ -177,13 +177,18 @@ jobs:
             echo "::error::ANDROID_KEYSTORE_BASE64 is not set; the Android build would be unsigned"
             exit 1
           fi
-          # Secrets set from Windows can carry a trailing CRLF; base64 -d
-          # rejects the \r, and a stray \r would also corrupt a password.
-          strip() { printf '%s' "$1" | tr -d '\r\n'; }
+          # Secrets piped to gh from Windows PowerShell can carry a UTF-8 BOM
+          # and a trailing CRLF. Drop both from the passwords and alias, and
+          # keep only base64 characters from the keystore.
+          strip() { printf '%s' "$1" | sed '1s/^\xEF\xBB\xBF//' | tr -d '\r\n'; }
           ANDROID_KEYSTORE_PASSWORD=$(strip "$ANDROID_KEYSTORE_PASSWORD")
           ANDROID_KEY_ALIAS=$(strip "$ANDROID_KEY_ALIAS")
           ANDROID_KEY_PASSWORD=$(strip "$ANDROID_KEY_PASSWORD")
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -cd 'A-Za-z0-9+/=' | base64 -d > "$RUNNER_TEMP/upload.jks"
+          # Fail here, not after a 15-minute build, if the key or password is wrong.
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" > /dev/null \
+            || { echo "::error::The keystore, its password or the alias does not match"; exit 1; }
           cat > "$RUNNER_TEMP/keystore.properties" <<EOF
           storeFile=$RUNNER_TEMP/upload.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
